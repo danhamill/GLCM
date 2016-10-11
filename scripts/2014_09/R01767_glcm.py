@@ -169,12 +169,12 @@ if __name__ == '__main__':
         in_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01767_raster.tif"
         win = win_size
         meter = str(win/4)
-        contFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_contrast.tif"
-        dissFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_diss.tif"
-        homoFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_homo.tif"
-        energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_energy.tif"
-        corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_corr.tif"
-        ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_asm.tif"
+        contFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_contrast.tif"
+        dissFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_diss.tif"
+        homoFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_homo.tif"
+        energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_energy.tif"
+        corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_corr.tif"
+        ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_asm.tif"
         
         
         #Dont Change anythong below here
