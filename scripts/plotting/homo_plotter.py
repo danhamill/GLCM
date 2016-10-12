@@ -76,12 +76,11 @@ wms_url = r"http://grandcanyon.usgs.gov/arcgis/services/Imagery/ColoradoRiverIma
 font_size=10
 
 #change this stuff
-suffix = "_contrast.tif"
-cbr_txt = "Contrast"
+suffix = "_homo.tif"
+cbr_txt = "Homogeneity"
 c_ramp = 'hot'
 for win_size in win_sizes[1:]:
     print 'Now working in %s window size' %(win_size,)
-    
     #calulate window size in meters
     meter = win_size/4    
     #build file paths to input rasters

@@ -175,7 +175,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     
 if __name__ == '__main__':  
     win_sizes = [8,12,20,40]
-    for win_size in win_sizes[1:]:   
+    for win_size in win_sizes[]:   
         in_raster = r"C:\workspace\Merged_SS\window_analysis\10_percent_shift\raster\ss_50_rasterclipped.tif"
         win = win_size
         meter = str(win/4)

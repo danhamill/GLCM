@@ -76,8 +76,8 @@ wms_url = r"http://grandcanyon.usgs.gov/arcgis/services/Imagery/ColoradoRiverIma
 font_size=10
 
 #change this stuff
-suffix = "_contrast.tif"
-cbr_txt = "Contrast"
+suffix = "_diss.tif"
+cbr_txt = "Dissimilarity"
 c_ramp = 'hot'
 for win_size in win_sizes[1:]:
     print 'Now working in %s window size' %(win_size,)
