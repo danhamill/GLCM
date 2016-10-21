@@ -29,16 +29,15 @@ def im_resize(im,Nx,Ny):
     newKernel = RectBivariateSpline(np.r_[:ny],np.r_[:nx],im)
     return newKernel(yy,xx)
     
-def p_me(Z):
+def p_me(Z,win):
     '''
     loop to standard deviation
     '''
-    try:
-        std = np.std(Z)
+    if np.count_nonzero(Z) == win**2: 
+        std = np.std(Z.flatten())
         return (std)
-    except:
-        print 'Something went wrong'
-        return (np.nan)
+    else:
+        return (0)
         
         
 def read_raster(in_raster):
@@ -140,8 +139,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     std[np.isinf(std)] = -99
     std[std>100] = -99
     driver = gdal.GetDriverByName(driverName)
-    cols = int((np.max(xx) - np.min(xx)) / gt[1])+1
-    rows = int((np.max(yy) - np.min(yy)) / -gt[5])+1
+    rows,cols = np.shape(std)
     ds = driver.Create( outFile, cols, rows, 1, gdal.GDT_Float32)      
     if proj is not None:  
         ds.SetProjection(proj.ExportToWkt()) 
@@ -153,35 +151,41 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     ss_band.ComputeStatistics(False)
     del ds
     
-    
+
+
 #Stuff to change
-in_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01767_raster.tif"
-win = 8
-meter = str(win/4)
-outFile = r"C:\workspace\GLCM\output\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + ".tif"
+win_sizes = [8,12,20,40,80]
+for win_size in win_sizes:
+    #Stuff to change
+    in_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01767_raster.tif"
+    win = win_size
+    meter = str(win/4)
+    outFile = r"C:\workspace\GLCM\output\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + ".tif"
 
+    print 'now working on making %s...'  %(outFile,)
+    merge, xx, yy, gt = read_raster(in_raster)
 
-merge, xx, yy, gt = read_raster(in_raster)
-
-merge[np.isnan(merge)] = 0
-
-Z,ind = sliding_window(merge,(win,win),(win,win))
-
-Ny, Nx = np.shape(merge)
-
-w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k]) for k in xrange(len(Z)))
-
-std_array = np.reshape(w , ( ind[0], ind[1] ) )
-std = im_resize(std_array,Nx,Ny)
-std[merge==0]=np.nan
-
-del w,Z,ind,Ny,Nx, std_array
-
-driverName= 'GTiff'    
-epsg_code=26949
-proj = osr.SpatialReference()
-proj.ImportFromEPSG(epsg_code)
-
-CreateRaster(xx, yy, std, gt, proj,driverName,outFile) 
-
-del std, merge, xx, yy, gt, meter
+    merge[np.isnan(merge)] = 0
+    
+    Z,ind = sliding_window(merge,(win,win),(win,win))
+    
+    Ny, Nx = np.shape(merge)
+    
+    w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k], win) for k in xrange(len(Z)))
+    
+    std_array = np.reshape(w , ( ind[0], ind[1] ) )
+    std = im_resize(std_array,Nx,Ny)
+    print 'Total non zero elements is %s'  %(np.count_nonzero(std),)
+    std[merge==0]=np.nan
+    std[std<0]=np.nan
+    
+    del w,Z,ind,Ny,Nx, std_array
+    
+    driverName= 'GTiff'    
+    epsg_code=26949
+    proj = osr.SpatialReference()
+    proj.ImportFromEPSG(epsg_code)
+    
+    CreateRaster(xx, yy, std, gt, proj,driverName,outFile) 
+    
+    del std, merge, xx, yy, gt, meter
