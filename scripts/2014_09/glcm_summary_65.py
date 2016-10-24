@@ -15,7 +15,6 @@ import os
 import numpy as np
 import matplotlib.patches as mpatches
 
-
 def assign_class(row):
     if row.sed5class == 1:
         return 'sand'
@@ -103,16 +102,16 @@ if __name__ == '__main__':
         win = win_size
         meter = str(win/4)
         print 'Now working on %s grid resolution...' %(meter,)
-        ss_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01767_raster.tif"
-        in_shp = r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"
+        ss_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01765_raster.tif"
+        in_shp = r"C:\workspace\Merged_SS\window_analysis\shapefiles\R01765.shp"
         
-        contFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_contrast.tif"
-        dissFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_diss.tif"
-        homoFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_homo.tif"
-        energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_energy.tif"
-        corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_corr.tif"
-        ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_asm.tif"    
-        ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_entropy.tif"
+        contFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_contrast.tif"
+        dissFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_diss.tif"
+        homoFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_homo.tif"
+        energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_energy.tif"
+        corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_corr.tif"
+        ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_asm.tif"    
+        ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_entropy.tif"
         
         ss_stats = zonal_stats(in_shp, ss_raster, stats=['count','mean','std'])
         ss_df = pd.DataFrame(ss_stats)
@@ -133,11 +132,12 @@ if __name__ == '__main__':
             #Create Summary Table
             agg_tbl = make_table(s_df, g_df, r_df)
 
-            oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_aggragrated_" + meter +".png"
+            oName = r"C:\workspace\GLCM\output\2014_09_2" + os.sep + variable + "_aggragrated_" + meter +".png"
 
             plot_agg_table(agg_tbl,oName, meter)
             
-            oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_aggragrated_" + meter +"_distribution.png"
+            oName = r"C:\workspace\GLCM\output\2014_09_2" + os.sep + variable + "_aggragrated_" + meter +"_distribution.png"
+            
             
             #legend stuff
             blue = mpatches.Patch(color='blue',label='Sand')
@@ -178,10 +178,10 @@ if __name__ == '__main__':
             merge['substrate'] = a
 
             
-            oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_ss_comparison_" + meter +".csv"   
+            oName = r"C:\workspace\GLCM\output\2014_09_2" + os.sep + variable + "_ss_comparison_" + meter +".csv"   
             merge.to_csv(oName, sep=',',index=False)
             
-            oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_ss_comparison_" + meter +".png"
+            oName = r"C:\workspace\GLCM\output\2014_09_2" + os.sep + variable + "_ss_comparison_" + meter +".png"
             fig, (ax1,ax2) = plt.subplots(nrows=2)
 
             
