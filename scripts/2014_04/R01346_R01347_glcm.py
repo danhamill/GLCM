@@ -30,11 +30,16 @@ def im_resize(im,Nx,Ny):
     newKernel = RectBivariateSpline(np.r_[:ny],np.r_[:nx],im)
     return newKernel(yy,xx)
     
-def p_me(Z):
+def entropy_calc(glcm):
+    horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
+    horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
+    return horizontal_entropy
+    
+def p_me(Z, win):
     '''
     loop to standard deviation
     '''
-    try:
+    if np.count_nonzero(Z) > 0.75*win**2: 
         glcm = greycomatrix(Z, [5], [0], 256, symmetric=True, normed=True)
         cont = greycoprops(glcm, 'contrast')
         diss = greycoprops(glcm, 'dissimilarity')
@@ -42,10 +47,10 @@ def p_me(Z):
         eng = greycoprops(glcm, 'energy')
         corr = greycoprops(glcm, 'correlation')
         ASM = greycoprops(glcm, 'ASM')
-        return (cont, diss, homo, eng, corr, ASM)
-    except:
-        print 'Something went wrong'
-        return (0,0,0,0,0,0)
+        entropy = entropy_calc(glcm)
+        return (cont, diss, homo, eng, corr, ASM, entropy)
+    else:
+        return (0,0,0,0,0,0,0)
         
         
 def read_raster(in_raster):
@@ -157,8 +162,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     std = np.squeeze(std)
     std[np.isinf(std)] = -99
     driver = gdal.GetDriverByName(driverName)
-    cols = int((np.max(xx) - np.min(xx)) / gt[1])+1
-    rows = int((np.max(yy) - np.min(yy)) / -gt[5])+1
+    rows,cols = np.shape(std)
     ds = driver.Create( outFile, cols, rows, 1, gdal.GDT_Float32)      
     if proj is not None:  
         ds.SetProjection(proj.ExportToWkt()) 
@@ -174,8 +178,8 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
 #Stuff to change
     
 if __name__ == '__main__':  
-    win_sizes = [8,12,20,40]
-    for win_size in win_sizes[]:   
+    win_sizes = [8,12,20,40,80]
+    for win_size in win_sizes:   
         in_raster = r"C:\workspace\Merged_SS\window_analysis\10_percent_shift\raster\ss_50_rasterclipped.tif"
         win = win_size
         meter = str(win/4)
@@ -185,9 +189,11 @@ if __name__ == '__main__':
         energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_energy.tif"
         corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_corr.tif"
         ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_asm.tif"
-    
+        ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_entropy.tif"
+   
         
         
+        #Dont Change anythong below here
         merge, xx, yy, gt = read_raster(in_raster)
         
         merge[np.isnan(merge)] = 0
@@ -196,7 +202,7 @@ if __name__ == '__main__':
         
         Ny, Nx = np.shape(merge)
         
-        w = Parallel(n_jobs = cpu_count(), verbose=0)(delayed(p_me)(Z[k]) for k in xrange(len(Z)))
+        w = Parallel(n_jobs = cpu_count(), verbose=0)(delayed(p_me)(Z[k], win) for k in xrange(len(Z)))
         
         cont = [a[0] for a in w]
         diss = [a[1] for a in w]
@@ -204,7 +210,7 @@ if __name__ == '__main__':
         eng  = [a[3] for a in w]
         corr = [a[4] for a in w]
         ASM  = [a[5] for a in w]
-    
+        ENT  = [a[6] for a in w]
         
         #Reshape to match number of windows
         plt_cont = np.reshape(cont , ( ind[0], ind[1] ) )
@@ -213,7 +219,8 @@ if __name__ == '__main__':
         plt_eng = np.reshape(eng , ( ind[0], ind[1] ) )
         plt_corr = np.reshape(corr , ( ind[0], ind[1] ) )
         plt_ASM =  np.reshape(ASM , ( ind[0], ind[1] ) )
-        del cont, diss, homo, eng, corr, ASM
+        plt_ent = np.reshape(ENT, (ind[0],ind[1]))
+        del cont, diss, homo, eng, corr, ASM, ENT
         
         #Resize Images to receive texture and define filenames
         contrast = im_resize(plt_cont,Nx,Ny)
@@ -228,7 +235,9 @@ if __name__ == '__main__':
         correlation[merge==0]=np.nan
         ASM = im_resize(plt_ASM,Nx,Ny)
         ASM[merge==0]=np.nan
-        del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM
+        ENT = im_resize(plt_ent,Nx,Ny)
+        ENT[merge==0]=np.nan
+        del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent
     
         
         del w,Z,ind,Ny,Nx
@@ -244,5 +253,6 @@ if __name__ == '__main__':
         CreateRaster(xx, yy, energy, gt, proj,driverName,energyFile)
         CreateRaster(xx, yy, correlation, gt, proj,driverName,corrFile)
         CreateRaster(xx, yy, ASM, gt, proj,driverName,ASMFile)
+        CreateRaster(xx, yy, ENT, gt, proj,driverName,ENTFile)
         
-        del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM
+        del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM, ENT

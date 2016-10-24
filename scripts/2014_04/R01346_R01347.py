@@ -29,16 +29,15 @@ def im_resize(im,Nx,Ny):
     newKernel = RectBivariateSpline(np.r_[:ny],np.r_[:nx],im)
     return newKernel(yy,xx)
     
-def p_me(Z):
+def p_me(Z,win):
     '''
     loop to standard deviation
     '''
-    try:
-        std = np.std(Z)
+    if np.count_nonzero(Z) > 0.25*win**2: 
+        std = np.std(Z.flatten())
         return (std)
-    except:
-        print 'Something went wrong'
-        return (np.nan)
+    else:
+        return (0)
         
         
 def read_raster(in_raster):
@@ -137,11 +136,10 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     Exports data to GTiff Raster
     '''
     std = np.squeeze(std)
-    std[np.isinf(std)] = -99
+    std[np.isnan(std)] = -99
     std[std>100] = -99
     driver = gdal.GetDriverByName(driverName)
-    cols = int((np.max(xx) - np.min(xx)) / gt[1])+1
-    rows = int((np.max(yy) - np.min(yy)) / -gt[5])+1
+    rows,cols = np.shape(std)
     ds = driver.Create( outFile, cols, rows, 1, gdal.GDT_Float32)      
     if proj is not None:  
         ds.SetProjection(proj.ExportToWkt()) 
@@ -155,27 +153,29 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     
     
 #Stuff to change
-win_sizes = [8,12,20,40]
+win_sizes = [8,12,20,40,80]
 for win_size in win_sizes:
-    in_raster = r"C:\workspace\Merged_SS\window_analysis\raster\ss_10_rasterclipped.tif"
+    in_raster = r"C:\workspace\Merged_SS\window_analysis\10_percent_shift\raster\ss_50_rasterclipped.tif"
     win = win_size
     meter = str(win/4)
     outFile = r"C:\workspace\GLCM\output\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + ".tif"
     
-    
+    print 'now working on making %s...'  %(outFile,)
     merge, xx, yy, gt = read_raster(in_raster)
-    
+
     merge[np.isnan(merge)] = 0
     
     Z,ind = sliding_window(merge,(win,win),(win,win))
     
     Ny, Nx = np.shape(merge)
     
-    w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k]) for k in xrange(len(Z)))
+    w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k], win) for k in xrange(len(Z)))
     
     std_array = np.reshape(w , ( ind[0], ind[1] ) )
     std = im_resize(std_array,Nx,Ny)
+    print 'Total non zero elements is %s'  %(np.count_nonzero(std),)
     std[merge==0]=np.nan
+    std[std<0]=np.nan
     
     del w,Z,ind,Ny,Nx, std_array
     

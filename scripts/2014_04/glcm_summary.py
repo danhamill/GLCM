@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from pandas.tools.plotting import table
 import os
 import numpy as np
-
+import matplotlib.patches as mpatches
 
 def assign_class(row):
     if row.sed5class == 1:
@@ -97,7 +97,7 @@ def plot_agg_table(agg_tbl,oName,meter):
     
     
 if __name__ == '__main__':  
-    win_sizes = [8,12,20,40]
+    win_sizes = [8,12,20,40,80]
     for win_size in win_sizes[:]:   
         win = win_size
         meter = str(win/4)
@@ -111,14 +111,14 @@ if __name__ == '__main__':
         energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_energy.tif"
         corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_corr.tif"
         ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_asm.tif"    
-
+        ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_entropy.tif"
         
         ss_stats = zonal_stats(in_shp, ss_raster, stats=['count','mean','std'])
         ss_df = pd.DataFrame(ss_stats)
         ss_df.rename(columns={'count':'ss_count','mean':'ss_mean','std':'ss_std'},inplace=True)
         
         
-        raster_list = [contFile, dissFile, homoFile, energyFile, corrFile, ASMFile]
+        raster_list = [contFile, dissFile, homoFile, energyFile, corrFile, ASMFile,ENTFile]
         
         for raster in raster_list[:]:
             
@@ -138,38 +138,33 @@ if __name__ == '__main__':
             
             oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_aggragrated_" + meter +"_distribution.png"
             
-            fig = plt.figure(figsize=(6,2))
-            ax = fig.add_subplot(1,3,1)
-            try:
-                s_df.plot.hist(ax=ax,bins=50,title='Sand',legend=False,rot=45)            
-            except:
-                ax.xaxis.set_visible(False)
-                ax.yaxis.set_visible(False)
-                for sp in ax.spines.itervalues():
-                    sp.set_color('w')
-                    sp.set_zorder(0)
-                    
-            ax = fig.add_subplot(1,3,2)
-            try:
-               g_df.plot.hist(ax=ax,bins=50,title='Gravel',legend=False,rot=45)
-            except:
-                ax.xaxis.set_visible(False)
-                ax.yaxis.set_visible(False)
-                for sp in ax.spines.itervalues():
-                    sp.set_color('w')
-                    sp.set_zorder(0)
+            #legend stuff
+            blue = mpatches.Patch(color='blue',label='Sand')
+            green = mpatches.Patch(color='green',label='Gravel')
+            red = mpatches.Patch(color='red',label='Boulders')
             
-            ax = fig.add_subplot(1,3,3)
+            fig = plt.figure(figsize=(6,2))
+            ax = fig.add_subplot(1,1,1)
             try:
-                  r_df.plot.hist(ax=ax,bins=50,title='Boulders',legend=False,rot=45)
+                s_df.plot.hist(ax=ax,bins=50,legend=False,rot=45,zorder=1,color='blue')            
+            except:
+                pass
+                    
+            #ax = fig.add_subplot(1,3,2)
+            try:
+               g_df.plot.hist(ax=ax,bins=50,legend=False,rot=45,zorder=1, color='green')
+            except:
+                pass            
+            #ax = fig.add_subplot(1,3,3)
+            try:
+                  r_df.plot.hist(ax=ax,bins=50,legend=False,rot=45,zorder=10, color='red')
             except: 
-                ax.xaxis.set_visible(False)
-                ax.yaxis.set_visible(False)
-                for sp in ax.spines.itervalues():
-                    sp.set_color('w')
-                    sp.set_zorder(0)
-            plt.suptitle(variable + ' '+ meter + ' meter grid')
-            plt.tight_layout(pad=2)
+                pass
+            
+            ax.set_xlabel(variable)            
+            ax.legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
+            plt.suptitle( meter + ' meter grid')
+            plt.tight_layout(pad=2)            
             plt.savefig(oName, dpi=600)
             
     
@@ -182,7 +177,10 @@ if __name__ == '__main__':
             
             merge['substrate'] = a
 
-
+            oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_ss_comparison_" + meter +".csv"   
+            merge.to_csv(oName, sep=',', index=False)
+            
+            
             oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_ss_comparison_" + meter +".png"
             fig, (ax1,ax2) = plt.subplots(nrows=2)
 
