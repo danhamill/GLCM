@@ -33,7 +33,7 @@ def p_me(Z,win):
     '''
     loop to standard deviation
     '''
-    if np.count_nonzero(Z) == win**2: 
+    if np.count_nonzero(Z) > 0.25*win**2: 
         std = np.std(Z.flatten())
         return (std)
     else:
