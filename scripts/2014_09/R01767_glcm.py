@@ -13,6 +13,17 @@ import dask.array as da
 from joblib import Parallel, delayed, cpu_count
 import os
 from skimage.feature import greycomatrix, greycoprops
+import sys
+
+def angle_converter(angle):
+    if int(angle) ==  0:
+        return 0
+    if int(angle) == 45:
+        return np.pi/4
+    if int(angle) == 90:
+        return np.pi/2
+    if int(angle) == 135:
+        return 0.75*np.pi
 
 def im_resize(im,Nx,Ny):
     '''
@@ -35,12 +46,12 @@ def entropy_calc(glcm):
     horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
     return horizontal_entropy
     
-def p_me(Z, win):
+def p_me(Z, win,dist,angle):
     '''
     loop to standard deviation
     '''
     if np.count_nonzero(Z) > 0.75*win**2: 
-        glcm = greycomatrix(Z, [5], [0], 256, symmetric=True, normed=True)
+        glcm = greycomatrix(Z, [dist], [angle], 256, symmetric=True, normed=True)
         cont = greycoprops(glcm, 'contrast')
         diss = greycoprops(glcm, 'dissimilarity')
         homo = greycoprops(glcm, 'homogeneity')
@@ -168,6 +179,10 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     
 if __name__ == '__main__':  
     
+    angle = sys.argv[1]
+    dist = int(sys.argv[2])
+    angle = angle_converter(angle)
+    print 'Now working on %s angle and %ss distance...' %(str(angle), str(dist))  
     #Stuff to change
     win_sizes = [8,12,20,40,80]
     for win_size in win_sizes:   
@@ -192,7 +207,7 @@ if __name__ == '__main__':
         
         Ny, Nx = np.shape(merge)
         
-        w = Parallel(n_jobs = cpu_count(), verbose=0)(delayed(p_me)(Z[k],win) for k in xrange(len(Z)))
+        w = Parallel(n_jobs = cpu_count(), verbose=0)(delayed(p_me)(Z[k],win,dist,angle) for k in xrange(len(Z)))
         
         cont = [a[0] for a in w]
         diss = [a[1] for a in w]

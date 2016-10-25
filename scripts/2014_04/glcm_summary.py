@@ -95,7 +95,7 @@ def plot_agg_table(agg_tbl,oName,meter):
     plt.tight_layout()
     plt.savefig(oName, dpi = 600)
     
-    
+
 if __name__ == '__main__':  
     win_sizes = [8,12,20,40,80]
     for win_size in win_sizes[:]:   
@@ -103,8 +103,7 @@ if __name__ == '__main__':
         meter = str(win/4)
         print 'Now working on %s grid resolution...' %(meter,)
         ss_raster = r"C:\workspace\Merged_SS\window_analysis\10_percent_shift\raster\ss_50_rasterclipped.tif"
-        in_shp = r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_800_3class.shp"
-        
+        in_shp = r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_800_3class.shp"    
         contFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_contrast.tif"
         dissFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_diss.tif"
         homoFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_homo.tif"
@@ -120,7 +119,7 @@ if __name__ == '__main__':
         
         raster_list = [contFile, dissFile, homoFile, energyFile, corrFile, ASMFile,ENTFile]
         
-        for raster in raster_list[:]:
+        for raster in raster_list:
             
             print 'now working on %s ....' %(raster,)
             variable = raster.split('\\')[-1].split('.')[0].split('_')[-1]
@@ -128,15 +127,18 @@ if __name__ == '__main__':
             z_stats = zonal_stats(in_shp, raster, stats=['count','mean'], raster_out=True)
             
             s_df,  g_df, r_df, a = agg_distributions(z_stats, in_shp)
-            
+
             #Create Summary Table
             agg_tbl = make_table(s_df, g_df, r_df)
-
+            
+            
+            oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_aggragrated_" + meter +"_distribution.csv"
+            agg_tbl.to_csv(oName,sep=',')
             oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_aggragrated_" + meter +".png"
 
             plot_agg_table(agg_tbl,oName, meter)
             
-            oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_aggragrated_" + meter +"_distribution.png"
+           
             
             #legend stuff
             blue = mpatches.Patch(color='blue',label='Sand')
@@ -167,8 +169,14 @@ if __name__ == '__main__':
             plt.tight_layout(pad=2)            
             plt.savefig(oName, dpi=600)
             
-    
-
+            
+            oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_zonalstats_" + meter +"_grid.csv" 
+            glcm_stats = zonal_stats(in_shp, raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
+            glcm_df = pd.DataFrame(glcm_stats)
+            glcm_df['substrate'] = a
+            glcm_df.to_csv(oName,sep=',',index=False)
+            
+            
             glcm_stats = zonal_stats(in_shp, raster, stats=['count','mean'])   
 
             glcm_df = pd.DataFrame(glcm_stats)
