@@ -132,7 +132,9 @@ if __name__ == '__main__':
             
             #Create Summary Table
             agg_tbl = make_table(s_df, g_df, r_df)
-
+            oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_aggragrated_" + meter +"_distribution.csv"
+            agg_tbl.to_csv(oName,sep=',')
+            
             oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_aggragrated_" + meter +".png"
 
             plot_agg_table(agg_tbl,oName, meter)
@@ -168,6 +170,11 @@ if __name__ == '__main__':
             plt.tight_layout(pad=2)            
             plt.savefig(oName, dpi=600)
             
+            oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_zonalstats_" + meter +"_grid.csv" 
+            glcm_stats = zonal_stats(in_shp, raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
+            glcm_df = pd.DataFrame(glcm_stats)
+            glcm_df['substrate'] = a
+            glcm_df.to_csv(oName,sep=',',index=False)
             
             glcm_stats = zonal_stats(in_shp, raster, stats=['count','mean'])   
 
@@ -179,7 +186,7 @@ if __name__ == '__main__':
 
             
             oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_ss_comparison_" + meter +".csv"   
-            merge.to_csv(oName, sep=',',index=False)
+            merge.to_csv(oName, sep=',')
             
             oName = r"C:\workspace\GLCM\output\2014_09" + os.sep + variable + "_ss_comparison_" + meter +".png"
             fig, (ax1,ax2) = plt.subplots(nrows=2)
