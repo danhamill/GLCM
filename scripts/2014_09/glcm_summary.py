@@ -99,7 +99,7 @@ def plot_agg_table(agg_tbl,oName,meter):
     
 if __name__ == '__main__':  
     win_sizes = [8,12,20,40,80]
-    for win_size in win_sizes[:]:   
+    for win_size in win_sizes[1:2]:   
         win = win_size
         meter = str(win/4)
         print 'Now working on %s grid resolution...' %(meter,)
@@ -113,13 +113,15 @@ if __name__ == '__main__':
         corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_corr.tif"
         ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_asm.tif"    
         ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_entropy.tif"
+        meanFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_mean.tif"
+        varFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_var.tif"
         
         ss_stats = zonal_stats(in_shp, ss_raster, stats=['count','mean','std'])
         ss_df = pd.DataFrame(ss_stats)
         ss_df.rename(columns={'count':'ss_count','mean':'ss_mean','std':'ss_std'},inplace=True)
 
         
-        raster_list = [contFile, dissFile, homoFile, energyFile, corrFile, ASMFile,ENTFile]
+        raster_list = [contFile, dissFile, homoFile, energyFile, corrFile, ASMFile,ENTFile,meanFile,varFile]
         
         for raster in raster_list[:]:
             
