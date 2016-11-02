@@ -10,11 +10,16 @@ import numpy as np
 import pandas as pd
 
 def centeroidnp(df,df1,df2,query1,metric):
-    length = df.query(query1)[metric].dropna().values.size
-    sum_x = np.nansum(df.query(query1)[metric].values)
-    sum_y = np.nansum(df1.query(query1)[metric].values)
-    sum_z = np.nansum(df2.query(query1)[metric].values)
-    return sum_x/length, sum_y/length, sum_z/length
+#    length = df.query(query1)[metric].dropna().values.size
+#    sum_x = np.nansum(df.query(query1)[metric].values)
+#    sum_y = np.nansum(df1.query(query1)[metric].values)
+#    sum_z = np.nansum(df2.query(query1)[metric].values)
+#    return sum_x/length, sum_y/length, sum_z/length
+    
+    x = np.nanmedian(df.query(query1)[metric])
+    y = np.nanmedian(df1.query(query1)[metric])
+    z= np.nanmedian(df2.query(query1)[metric])
+    return x,y,z
     
 def error_bars(df,df1,df2,query1,metric):
     y_err = np.nanstd(df.query(query1)[metric].values)
@@ -40,9 +45,9 @@ def get_center(homo_df,var_df,ent_df,metric):
     b_err = error_bars(homo_df,var_df,ent_df,b_query,metric)
     cent_df = pd.DataFrame(columns=['x_cent','y_cent','z_cent','y_err','x_err','z_err'], index=['null','sand','gravel','boulders'])
     cent_df.loc['null'] = pd.Series({'x_cent':0. ,'y_cent':0. ,'z_cent':0.,'y_err':0. ,'x_err':0.,'z_err':0.})
-    cent_df.loc['sand'] = pd.Series({'x_cent':s_centroid[0] ,'y_cent':s_centroid[1] ,'z_cent':s_centroid[2],'y_err':s_err[1] ,'x_err':s_err[0],'z_err':s_err[2]})
-    cent_df.loc['gravel'] = pd.Series({'x_cent':g_centroid[0] ,'y_cent': g_centroid[1],'z_cent':g_centroid[2],'y_err':g_err[1] ,'x_err':g_err[0],'z_err':g_err[2]})
-    cent_df.loc['boulders'] = pd.Series({'x_cent':b_centroid[0] ,'y_cent':b_centroid[1] ,'z_cent':b_centroid[2],'y_err': b_err[1],'x_err':b_err[0],'z_err':b_err[2]})
+    cent_df.loc['sand'] = pd.Series({'x_cent':1-s_centroid[0] ,'y_cent':s_centroid[1] ,'z_cent':s_centroid[2],'y_err':s_err[1] ,'x_err':s_err[0],'z_err':s_err[2]})
+    cent_df.loc['gravel'] = pd.Series({'x_cent':1-g_centroid[0] ,'y_cent': g_centroid[1],'z_cent':g_centroid[2],'y_err':g_err[1] ,'x_err':g_err[0],'z_err':g_err[2]})
+    cent_df.loc['boulders'] = pd.Series({'x_cent':1-b_centroid[0] ,'y_cent':b_centroid[1] ,'z_cent':b_centroid[2],'y_err': b_err[1],'x_err':b_err[0],'z_err':b_err[2]})
     cent_df = cent_df[['z_cent','x_cent','y_cent']]
     return cent_df
 # =========================================================
@@ -203,9 +208,9 @@ if __name__ == '__main__':
     var = r"C:\workspace\GLCM\d_5_and_angle_0\var_3_zonal_stats_merged.csv"
     ent = r"C:\workspace\GLCM\d_5_and_angle_0\entropy_3_zonal_stats_merged.csv"
         
-    homo_df = pd.read_csv(homo,sep=',',usecols=['percentile_25','mean','percentile_75','substrate'])
-    var_df = pd.read_csv(var, sep=',',usecols=['percentile_25','mean','percentile_75','substrate'])
-    ent_df = pd.read_csv(ent, sep=',',usecols=['percentile_25','mean','percentile_75','substrate'])
+    homo_df = pd.read_csv(homo,sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
+    var_df = pd.read_csv(var, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
+    ent_df = pd.read_csv(ent, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     
     
 
@@ -217,9 +222,9 @@ if __name__ == '__main__':
     
     #25% ranges
     p_25 = get_center(homo_df,var_df,ent_df,'percentile_25')
-    p_50 = get_center(homo_df,var_df,ent_df,'mean')
+    p_50 = get_center(homo_df,var_df,ent_df,'percentile_50')
     p_75 = get_center(homo_df,var_df,ent_df,'percentile_75')
-    
+
     for df in [p_25,p_50,p_75]:
         
         if df.equals(p_25):
@@ -233,7 +238,7 @@ if __name__ == '__main__':
         
         #======================================================
         ## inputs
-        w = [1, 1, 1] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
+        w = [0.2, 0.1, 0.7] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         # calibration matrix consisting of N rows (substrates, e.g. 4 (null, sand, gravel, boulders)) and M columns (classifiers - e.g M=3 for entropy, homo, and glcm variance)
         # so calib contains the means of those classifier variables per substrate
@@ -241,7 +246,7 @@ if __name__ == '__main__':
         
         calib = np.asarray(df.values,dtype='float')
         vec1 = ent_data.flatten()#flattened array of homogeneity values from a given sample (sidescan)
-        vec2 = homo_data.flatten()#flattened array of entropy values
+        vec2 = 1-homo_data.flatten()#flattened array of entropy values
         vec3 = var_data.flatten()#flattened array of GLCM variance values
         ##vec4 = #??
         
