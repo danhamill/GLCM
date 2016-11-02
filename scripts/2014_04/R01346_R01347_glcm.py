@@ -13,7 +13,7 @@ import dask.array as da
 from joblib import Parallel, delayed, cpu_count
 import os
 from skimage.feature import greycomatrix, greycoprops
-
+import sys
 
 def angle_converter(angle):
     if int(angle) ==  0:
@@ -41,6 +41,15 @@ def im_resize(im,Nx,Ny):
     newKernel = RectBivariateSpline(np.r_[:ny],np.r_[:nx],im)
     return newKernel(yy,xx)
     
+def mean_var(P):
+    (num_level, num_level2, num_dist, num_angle) = P.shape
+    I, J = np.ogrid[0:num_level, 0:num_level]
+    I = np.array(range(num_level)).reshape((num_level, 1, 1, 1))
+    mean_i = np.apply_over_axes(np.sum, (I * P), axes=(0, 1))[0, 0]
+    diff_i = I - np.apply_over_axes(np.sum, (I * P), axes=(0, 1))[0, 0]
+    var_h = np.apply_over_axes(np.sum, (P * (diff_i) ** 2), axes=(0, 1))[0, 0]
+    return mean_i, var_h 
+    
 def entropy_calc(glcm):
     horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
     horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
@@ -59,9 +68,10 @@ def p_me(Z, win,dist,angle):
         corr = greycoprops(glcm, 'correlation')
         ASM = greycoprops(glcm, 'ASM')
         entropy = entropy_calc(glcm)
-        return (cont, diss, homo, eng, corr, ASM, entropy)
+        mean, var = mean_var(glcm)
+        return (cont, diss, homo, eng, corr, ASM, entropy,mean,var)
     else:
-        return (0,0,0,0,0,0,0)
+        return (0,0,0,0,0,0,0,0,0)
         
         
 def read_raster(in_raster):
@@ -190,12 +200,13 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     
 if __name__ == '__main__':  
     
-    angle = sys.argv[1]
-    dist = int(sys.argv[2])
+    angle = 0#sys.argv[1]
+    dist = 5#int(sys.argv[2])
     angle = angle_converter(angle)
     print 'Now working on %s angle and %ss distance...' %(str(angle), str(dist))
+    
     win_sizes = [8,12,20,40,80]
-    for win_size in win_sizes:   
+    for win_size in win_sizes[1:2]:   
         in_raster = r"C:\workspace\Merged_SS\window_analysis\10_percent_shift\raster\ss_50_rasterclipped.tif"
         win = win_size
         meter = str(win/4)
@@ -207,19 +218,19 @@ if __name__ == '__main__':
         corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_corr.tif"
         ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_asm.tif"
         ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_entropy.tif"
-   
+        meanFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_mean.tif"
+        varFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01346_R01347_" + meter + "_var.tif"
+     
+
         
-        
-        #Dont Change anythong below here
+       #Dont Change anythong below here
         merge, xx, yy, gt = read_raster(in_raster)
         
         merge[np.isnan(merge)] = 0
         
         Z,ind = sliding_window(merge,(win,win),(win,win))
         
-        Ny, Nx = np.shape(merge)
-        
-        w = Parallel(n_jobs = cpu_count(), verbose=0)(delayed(p_me)(Z[k], win, dist, angle) for k in xrange(len(Z)))
+        w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k], win, dist, angle) for k in xrange(len(Z)))
         
         cont = [a[0] for a in w]
         diss = [a[1] for a in w]
@@ -228,7 +239,8 @@ if __name__ == '__main__':
         corr = [a[4] for a in w]
         ASM  = [a[5] for a in w]
         ENT  = [a[6] for a in w]
-        
+        mean = [a[7] for a in w]
+        var  = [a[8] for a in w]
         #Reshape to match number of windows
         plt_cont = np.reshape(cont , ( ind[0], ind[1] ) )
         plt_diss = np.reshape(diss , ( ind[0], ind[1] ) )
@@ -237,23 +249,35 @@ if __name__ == '__main__':
         plt_corr = np.reshape(corr , ( ind[0], ind[1] ) )
         plt_ASM =  np.reshape(ASM , ( ind[0], ind[1] ) )
         plt_ent = np.reshape(ENT, (ind[0],ind[1]))
+        plt_mean =  np.reshape(mean , ( ind[0], ind[1] ) )
+        plt_var = np.reshape(var, (ind[0],ind[1]))
+        
         del cont, diss, homo, eng, corr, ASM, ENT
+        
+        thing, x,y,gt = read_raster(r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_entropy_resampled.tif")
+        Ny, Nx = np.shape(thing)
+        del x,y
+        
         
         #Resize Images to receive texture and define filenames
         contrast = im_resize(plt_cont,Nx,Ny)
-        contrast[merge==0]=np.nan
+        contrast[np.isnan(thing)]=np.nan
         dissimilarity = im_resize(plt_diss,Nx,Ny)
-        dissimilarity[merge==0]=np.nan    
+        dissimilarity[np.isnan(thing)]=np.nan    
         homogeneity = im_resize(plt_homo,Nx,Ny)
-        homogeneity[merge==0]=np.nan
+        homogeneity[np.isnan(thing)]=np.nan
         energy = im_resize(plt_eng,Nx,Ny)
-        energy[merge==0]=np.nan
+        energy[np.isnan(thing)]=np.nan
         correlation = im_resize(plt_corr,Nx,Ny)
-        correlation[merge==0]=np.nan
+        correlation[np.isnan(thing)]=np.nan
         ASM = im_resize(plt_ASM,Nx,Ny)
-        ASM[merge==0]=np.nan
+        ASM[np.isnan(thing)]=np.nan
         ENT = im_resize(plt_ent,Nx,Ny)
-        ENT[merge==0]=np.nan
+        ENT[np.isnan(thing)]=np.nan
+        mean = im_resize(plt_mean,Nx,Ny)
+        mean[np.isnan(thing)]=np.nan
+        var = im_resize(plt_var,Nx,Ny)
+        var[np.isnan(thing)]=np.nan
         del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent
     
         
@@ -271,5 +295,6 @@ if __name__ == '__main__':
         CreateRaster(xx, yy, correlation, gt, proj,driverName,corrFile)
         CreateRaster(xx, yy, ASM, gt, proj,driverName,ASMFile)
         CreateRaster(xx, yy, ENT, gt, proj,driverName,ENTFile)
-        
+        CreateRaster(xx, yy, mean, gt, proj,driverName,meanFile)
+        CreateRaster(xx, yy, var, gt, proj,driverName,varFile)
         del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM, ENT

@@ -44,6 +44,15 @@ def im_resize(im,Nx,Ny):
         newKernel = RectBivariateSpline(np.r_[:ny],np.r_[:nx],im,ky=2)
         return newKernel(yy,xx)
 
+def mean_var(P):
+    (num_level, num_level2, num_dist, num_angle) = P.shape
+    I, J = np.ogrid[0:num_level, 0:num_level]
+    I = np.array(range(num_level)).reshape((num_level, 1, 1, 1))
+    mean_i = np.apply_over_axes(np.sum, (I * P), axes=(0, 1))[0, 0]
+    diff_i = I - np.apply_over_axes(np.sum, (I * P), axes=(0, 1))[0, 0]
+    var_h = np.apply_over_axes(np.sum, (P * (diff_i) ** 2), axes=(0, 1))[0, 0]
+    return mean_i, var_h 
+    
 def entropy_calc(glcm):
     horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
     horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
@@ -62,9 +71,10 @@ def p_me(Z, win,dist,angle):
         corr = greycoprops(glcm, 'correlation')
         ASM = greycoprops(glcm, 'ASM')
         entropy = entropy_calc(glcm)
-        return (cont, diss, homo, eng, corr, ASM, entropy)
+        mean, var = mean_var(glcm)
+        return (cont, diss, homo, eng, corr, ASM, entropy,mean,var)
     else:
-        return (0,0,0,0,0,0,0)
+        return (0,0,0,0,0,0,0,0,0)
         
         
 def read_raster(in_raster):
@@ -181,15 +191,13 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     
 if __name__ == '__main__':  
     
-    angle = sys.argv[1]
-    dist = int(sys.argv[2])
+    angle = 0#sys.argv[1]
+    dist = 5#int(sys.argv[2])
     angle = angle_converter(angle)
-    print 'Now working on %s angle and %ss distance...' %(str(angle), str(dist))  
-    input("Press Enter to continue...")
-    
+    print 'Now working on %s angle and %ss distance...' %(str(angle), str(dist))      
     #Stuff to change
     win_sizes = [8,12,20,40,80]
-    for win_size in win_sizes:   
+    for win_size in win_sizes[1:2]:   
         in_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01765_raster.tif"
         win = win_size
         meter = str(win/4)
@@ -201,17 +209,23 @@ if __name__ == '__main__':
         corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_corr.tif"
         ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_asm.tif"
         ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_entropy.tif"
+        meanFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_mean.tif"
+        varFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_var.tif"
         
-        #Dont Change anythong below here
+              #Dont Change anythong below here
         merge, xx, yy, gt = read_raster(in_raster)
         
         merge[np.isnan(merge)] = 0
         
         Z,ind = sliding_window(merge,(win,win),(win,win))
         
-        Ny, Nx = np.shape(merge)
+        #Data to make raster resolution equal to window size
         
-        w = Parallel(n_jobs = cpu_count(), verbose=0)(delayed(p_me)(Z[k], win,dist,angle) for k in xrange(len(Z)))
+        thing, x,y,gt = read_raster(r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_entropy_resampled.tif")
+        Ny, Nx = np.shape(thing)
+        del x,y
+        
+        w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k], win, dist, angle) for k in xrange(len(Z)))
         
         cont = [a[0] for a in w]
         diss = [a[1] for a in w]
@@ -220,48 +234,60 @@ if __name__ == '__main__':
         corr = [a[4] for a in w]
         ASM  = [a[5] for a in w]
         ENT  = [a[6] for a in w]
+        mean = [a[7] for a in w]
+        var  = [a[8] for a in w]
         
         #Reshape to match number of windows
         plt_cont = np.reshape(cont , ( ind[0], ind[1] ) )
+        plt_cont = np.column_stack([plt_cont,np.zeros(plt_cont.shape[0])])
+        plt_cont[np.isnan(thing)]= np.nan
+        
         plt_diss = np.reshape(diss , ( ind[0], ind[1] ) )
+        plt_diss = np.column_stack([plt_diss,np.zeros(plt_diss.shape[0])])
+        plt_diss[np.isnan(thing)]= np.nan
+        
         plt_homo = np.reshape(homo , ( ind[0], ind[1] ) )
+        plt_homo = np.column_stack([plt_homo,np.zeros(plt_homo.shape[0])])
+        plt_homo[np.isnan(thing)]= np.nan
+        
         plt_eng = np.reshape(eng , ( ind[0], ind[1] ) )
+        plt_eng = np.column_stack([plt_eng,np.zeros(plt_eng.shape[0])])
+        plt_eng[np.isnan(thing)]= np.nan
+        
         plt_corr = np.reshape(corr , ( ind[0], ind[1] ) )
+        plt_corr = np.column_stack([plt_corr,np.zeros(plt_corr.shape[0])])
+        plt_corr[np.isnan(thing)]= np.nan
+        
         plt_ASM =  np.reshape(ASM , ( ind[0], ind[1] ) )
+        plt_ASM = np.column_stack([plt_ASM,np.zeros(plt_ASM.shape[0])])
+        plt_ASM[np.isnan(thing)]= np.nan
+        
         plt_ent = np.reshape(ENT, (ind[0],ind[1]))
-        del cont, diss, homo, eng, corr, ASM, ENT
+        plt_ent = np.column_stack([plt_ent,np.zeros(plt_ent.shape[0])])
+        plt_ent[np.isnan(thing)]= np.nan
         
-        #Resize Images to receive texture and define filenames
-        contrast = im_resize(plt_cont,Nx,Ny)
-        contrast[merge==0]=np.nan
-        dissimilarity = im_resize(plt_diss,Nx,Ny)
-        dissimilarity[merge==0]=np.nan    
-        homogeneity = im_resize(plt_homo,Nx,Ny)
-        homogeneity[merge==0]=np.nan
-        energy = im_resize(plt_eng,Nx,Ny)
-        energy[merge==0]=np.nan
-        correlation = im_resize(plt_corr,Nx,Ny)
-        correlation[merge==0]=np.nan
-        ASM = im_resize(plt_ASM,Nx,Ny)
-        ASM[merge==0]=np.nan
-        ENT = im_resize(plt_ent,Nx,Ny)
-        ENT[merge==0]=np.nan
-        del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent
-    
+        plt_mean = np.reshape(mean, (ind[0],ind[1]))
+        plt_mean = np.column_stack([plt_mean,np.zeros(plt_mean.shape[0])])
+        plt_mean[np.isnan(thing)]= np.nan
         
-        del w,Z,ind,Ny,Nx
+        plt_var = np.reshape(var, (ind[0],ind[1]))
+        plt_var = np.column_stack([plt_var,np.zeros(plt_var.shape[0])])
+        plt_var[np.isnan(thing)]= np.nan
+        
+        del cont, diss, homo, eng, corr, ASM, ENT, mean, var, w,Z,ind,Ny,Nx
         
         driverName= 'GTiff'    
         epsg_code=26949
         proj = osr.SpatialReference()
         proj.ImportFromEPSG(epsg_code)
         
-        CreateRaster(xx, yy, contrast, gt, proj,driverName,contFile) 
-        CreateRaster(xx, yy, dissimilarity, gt, proj,driverName,dissFile)
-        CreateRaster(xx, yy, homogeneity, gt, proj,driverName,homoFile)
-        CreateRaster(xx, yy, energy, gt, proj,driverName,energyFile)
-        CreateRaster(xx, yy, correlation, gt, proj,driverName,corrFile)
-        CreateRaster(xx, yy, ASM, gt, proj,driverName,ASMFile)
-        CreateRaster(xx, yy, ENT, gt, proj,driverName,ENTFile)
-        
-        del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM, ENT
+        CreateRaster(xx, yy, plt_cont, gt, proj,driverName,contFile) 
+        CreateRaster(xx, yy, plt_diss, gt, proj,driverName,dissFile)
+        CreateRaster(xx, yy, plt_homo, gt, proj,driverName,homoFile)
+        CreateRaster(xx, yy, plt_eng, gt, proj,driverName,energyFile)
+        CreateRaster(xx, yy, plt_corr, gt, proj,driverName,corrFile)
+        CreateRaster(xx, yy, plt_ASM, gt, proj,driverName,ASMFile)
+        CreateRaster(xx, yy, plt_ent, gt, proj,driverName,ENTFile)
+        CreateRaster(xx, yy, plt_mean, gt, proj,driverName,meanFile)
+        CreateRaster(xx, yy, plt_var, gt, proj,driverName,varFile)
+        del plt_cont, merge, xx, yy, gt, meter, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent, plt_mean, plt_var,thing
