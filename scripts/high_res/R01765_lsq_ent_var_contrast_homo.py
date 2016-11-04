@@ -9,7 +9,7 @@ import gdal
 import numpy as np
 import pandas as pd
 
-def centeroidnp(df,df1,df2,df3,query1,metric):   
+def centeroidnp(df,df1,df2,df3,query1,metric):
     x = np.nanmedian(df.query(query1)[metric])
     y = np.nanmedian(df1.query(query1)[metric])
     z= np.nanmedian(df2.query(query1)[metric])
@@ -47,7 +47,7 @@ def get_center(cont_df,var_df,ent_df,homo_df,metric):
     cent_df = cent_df[['z_cent','x_cent','y_cent','m_cent']]#
     return cent_df
 
-#   d= (0,vec1[ind[k]],vec2[ind[k]],vec3[ind[k]],vec4[ind[k]])
+#   d= (vec1[ind[k]],vec2[ind[k]],vec3[ind[k]],vec4[ind[k]])
 #   C = calib.T
 # =========================================================
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
@@ -197,22 +197,21 @@ def CreateRaster(sed_class,gt,outFile):
       
 if __name__ == '__main__':
     
-    ent_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04\3\R01346_R01347_3_entropy_resampled.tif"
-    var_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04\3\R01346_R01347_3_var_resampled.tif"
-    cont_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04\3\R01346_R01347_3_contrast_resampled.tif"
-    homo_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04\3\R01346_R01347_3_homo_resampled.tif"
+    ent_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_09_2\3\R01765_3_entropy_resampled.tif"
+    var_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_09_2\3\R01765_3_var_resampled.tif"
+    homo_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_09_2\3\R01765_3_homo_resampled.tif"
+    cont_raster = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_09_2\3\R01765_3_contrast_resampled.tif"
        
-    cont = r"C:\workspace\GLCM\new_output\contrast_3_zonal_stats_merged.csv"
+    homo = r"C:\workspace\GLCM\new_output\homo_3_zonal_stats_merged.csv"
     var = r"C:\workspace\GLCM\new_output\var_3_zonal_stats_merged.csv"
     ent = r"C:\workspace\GLCM\new_output\entropy_3_zonal_stats_merged.csv"
-    homo = r"C:\workspace\GLCM\new_output\homo_3_zonal_stats_merged.csv"   
-    
+    cont = r"C:\workspace\GLCM\new_output\contrast_3_zonal_stats_merged.csv"
+        
     cont_df = pd.read_csv(cont,sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     var_df = pd.read_csv(var, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     ent_df = pd.read_csv(ent, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     homo_df = pd.read_csv(homo, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     
-
     #Get the data
     ent_data, gt = read_raster(ent_raster)
     var_data = read_raster(var_raster)[0]
@@ -237,7 +236,7 @@ if __name__ == '__main__':
             metric= 'percentile50'
         elif df.equals(p_75):
             metric = 'percentile75'
-        outFile = r"C:\workspace\GLCM\output\least_sqares_classification\R01346_R01347_"+metric+"_var_ent_cont_homo_Sed_Class.tif"
+        outFile = r"C:\workspace\GLCM\output\least_sqares_classification\R01765_"+metric+"_Sed_Class_4_variable.tif"
     
         
         #======================================================
@@ -303,7 +302,8 @@ if __name__ == '__main__':
         plt.imshow(sed_class);plt.colorbar();plt.show()
         
         CreateRaster(sed_class,gt,outFile)
-        print 'Sucessfully created %s!' %(outFile,)
+        print 'Sucessfully created %s!' %(outFile)
+    
     
     
     
