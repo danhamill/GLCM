@@ -1,15 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 28 12:34:03 2016
+Created on Fri Nov 04 10:53:10 2016
 
 @author: dan
 """
+
 import osr
 import gdal
 import numpy as np
 import pandas as pd
 
-def centeroidnp(df,df1,df2,df3,query1,metric):   
+def centeroidnp(df,df1,df2,df3,query1,metric):
+#    length = df.query(query1)[metric].dropna().values.size
+#    sum_x = np.nansum(df.query(query1)[metric].values)
+#    sum_y = np.nansum(df1.query(query1)[metric].values)
+#    sum_z = np.nansum(df2.query(query1)[metric].values)
+#    return sum_x/length, sum_y/length, sum_z/length
+    
     x = np.nanmedian(df.query(query1)[metric])
     y = np.nanmedian(df1.query(query1)[metric])
     z= np.nanmedian(df2.query(query1)[metric])
@@ -39,8 +46,8 @@ def get_center(cont_df,var_df,ent_df,homo_df,metric):
     s_err = error_bars(cont_df,var_df,ent_df,homo_df,s_query,metric)    
     g_err = error_bars(cont_df,var_df,ent_df,homo_df,g_query,metric)
     b_err = error_bars(cont_df,var_df,ent_df,homo_df,b_query,metric)
-    cent_df = pd.DataFrame(columns=['x_cent','y_cent','z_cent','m_cent','y_err','x_err','z_err','m_err'], index=['null','sand','gravel','boulders'])
-    cent_df.loc['null'] = pd.Series({'x_cent':0. ,'y_cent':0. ,'z_cent':0.,'m_cent':0.,'y_err':0. ,'x_err':0.,'z_err':0.,'m_err':0.})
+    cent_df = pd.DataFrame(columns=['x_cent','y_cent','z_cent','m_cent','y_err','x_err','z_err','m_err'], index=['sand','gravel','boulders'])
+    #cent_df.loc['null'] = pd.Series({'x_cent':0. ,'y_cent':0. ,'z_cent':0.,'m_cent':0.,'y_err':0. ,'x_err':0.,'z_err':0.,'m_err':0.})
     cent_df.loc['sand'] = pd.Series({'x_cent':s_centroid[0] ,'y_cent':s_centroid[1] ,'z_cent':s_centroid[2],'m_cent':1-s_centroid[3],'y_err':s_err[1] ,'x_err':s_err[0],'z_err':s_err[2], 'm_err':s_err[3]})
     cent_df.loc['gravel'] = pd.Series({'x_cent':g_centroid[0] ,'y_cent': g_centroid[1],'z_cent':g_centroid[2],'m_cent':1-g_centroid[3],'y_err':g_err[1] ,'x_err':g_err[0],'z_err':g_err[2],'m_err':b_err[3]})
     cent_df.loc['boulders'] = pd.Series({'x_cent':b_centroid[0] ,'y_cent':b_centroid[1] ,'z_cent':b_centroid[2],'m_cent':1-b_centroid[3],'y_err': b_err[1],'x_err':b_err[0],'z_err':b_err[2],'m_err':g_err[3]})
@@ -52,7 +59,6 @@ def get_center(cont_df,var_df,ent_df,homo_df,metric):
 # =========================================================
 def lsqnonneg(C, d, x0=None, tol=None, itmax_factor=3):
     '''Linear least squares with nonnegativity constraints
-
     (x, resnorm, residual) = lsqnonneg(C,d) returns the vector x that minimizes norm(d-C*x)
     subject to x >= 0, C and d must be real
     '''
@@ -154,7 +160,7 @@ def get_class(calib,vec,w):
    return the percent variance associated with sand, gravel and rock, and the residual norm
    '''
 
-   X = lsqnonneg(calib,vec, x0=np.zeros(np.shape(calib)[0]))
+   X = lsqnonneg(calib,vec, x0=np.zeros(np.shape(calib.T)[0]))
    dist = (X[0]*w)/np.sum(X[0]*w)
    prc_sand = dist[0]
    prc_gravel = dist[1]
@@ -237,12 +243,12 @@ if __name__ == '__main__':
             metric= 'percentile50'
         elif df.equals(p_75):
             metric = 'percentile75'
-        outFile = r"C:\workspace\GLCM\output\least_sqares_classification\R01346_R01347_"+metric+"_var_ent_cont_homo_Sed_Class.tif"
+        outFile = r"C:\workspace\GLCM\output\least_sqares_classification\R01346_R01347_"+metric+"_Sed_Class_4_variable.tif"
     
         
         #======================================================
         ## inputs
-        w = [1,1,1,1] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
+        w = [1,1,1] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         # calibration matrix consisting of N rows (substrates, e.g. 4 (null, sand, gravel, boulders)) and M columns (classifiers - e.g M=3 for entropy, homo, and glcm variance)
         # so calib contains the means of those classifier variables per substrate
@@ -303,8 +309,3 @@ if __name__ == '__main__':
         plt.imshow(sed_class);plt.colorbar();plt.show()
         
         CreateRaster(sed_class,gt,outFile)
-        print 'Sucessfully created %s!' %(outFile,)
-    
-    
-    
-
