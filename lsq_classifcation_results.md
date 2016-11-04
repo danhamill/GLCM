@@ -1,7 +1,7 @@
 ## 3 Variable non-negative least squares classification results
 
 ### Variables Considered
-= Homogeneity (Contrast Group)
+- Homogeneity (Contrast Group)
 - Entropy (Orderliness Group)
 - GLCM Variance (Statistical Group)
 
