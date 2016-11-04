@@ -241,6 +241,7 @@ if __name__ == '__main__':
         ENT  = [a[6] for a in w]
         mean = [a[7] for a in w]
         var  = [a[8] for a in w]
+        del a
         
         #Reshape to match number of windows
         plt_cont = np.reshape(cont , ( ind[0], ind[1] ) )

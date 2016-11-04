@@ -222,13 +222,7 @@ if __name__ == '__main__':
     var_data = read_raster(var_raster)[0]
     cont_data = read_raster(cont_raster)[0]
     homo_data = read_raster(homo_raster)[0]
-    
-#    data_merge = pd.DataFrame({'ent':ent_data.flatten(),'var':var_data.flatten(),'homo':homo_data.flatten(),'cont_data':cont_data.flatten()})
-#    s_query = 'substrate == "sand"'
-#    g_query = 'substrate == "gravel"'
-#    b_query = 'substrate == "boulders"'    
-    
-    #25% ranges
+
     p_25 = get_center(cont_df,var_df,ent_df,homo_df,'percentile_25')
     p_50 = get_center(cont_df,var_df,ent_df,homo_df,'percentile_50')
     p_75 = get_center(cont_df,var_df,ent_df,homo_df,'percentile_75')

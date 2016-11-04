@@ -11,12 +11,6 @@ import numpy as np
 import pandas as pd
 
 def centeroidnp(df,df1,df2,df3,query1,metric):
-#    length = df.query(query1)[metric].dropna().values.size
-#    sum_x = np.nansum(df.query(query1)[metric].values)
-#    sum_y = np.nansum(df1.query(query1)[metric].values)
-#    sum_z = np.nansum(df2.query(query1)[metric].values)
-#    return sum_x/length, sum_y/length, sum_z/length
-    
     x = np.nanmedian(df.query(query1)[metric])
     y = np.nanmedian(df1.query(query1)[metric])
     z= np.nanmedian(df2.query(query1)[metric])
