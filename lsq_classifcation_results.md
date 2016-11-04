@@ -6,12 +6,14 @@
 - GLCM Variance (Statistical Group)
 
 #### 25 Percentile
+
 |Known Substrate|Boulders | Gravel | Sand | null|
-|---- | ---- | ---- | ----|
+| ----| ---- | ---- | ---- | ----|
 |Boulders|**0.81** | 0.14 | 0.05 | 0|
 |Gravel|1.0.51 | **0.32** | 0.16 | 0.0052|
 |Sand|0.12 | 0.18 | **0.7** | 0.0012|
 *Column values indicate predicition rates*
+
 #### 50 Percentile
 |Known Substrate|Boulders | Gravel | Sand | null|
 |----    | ---- | ---- | ----| ---|
@@ -56,7 +58,7 @@
 
 |Known Substrate|Boulders | Gravel | Sand | null|
 | ----| ---- | ---- | ---- | ----|
-|Boulders|**0.42 **| 0.21 | 0.36 | 0.0083|
+|Boulders|**0.42**| 0.21 | 0.36 | 0.0083|
 |Gravel|0.14 | **0.2** | 0.65| 0.0041|
 |Sand| 0.037 | 0.048 | **0.91** | 0.00|
 *Column values indicate predicition rates*
