@@ -25,7 +25,7 @@
 
 |Known Substrate|Boulders | Gravel | Sand | null|
 | ----| ---- | ---- | ---- | ----|
-|Boulders|**0.35 **| 0.441 | 0.19 | 0.000|
+|Boulders|**0.35**| 0.441 | 0.19 | 0.000|
 |Gravel|0.10 | **0.40** | 0.50| 0.000|
 |Sand| 0.03 | 0.09 | **0.88** | 0.00|
 *Column values indicate predicition rates*
