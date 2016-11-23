@@ -9,6 +9,7 @@ import pandas as pd
 from scikits.bootstrap import bootstrap as boot
 from rasterstats import zonal_stats
 import pytablewriter
+import itertools
 
 # =========================================================
 def get_subs(shp):
@@ -232,7 +233,13 @@ if __name__ == '__main__':
     del sand, gravel, boulders         
                 
                 
-                
+    
+
+
+
+  
+        
+        
     for (k,v), (k1,v1), (k2,v2) in zip(ent_dict.items(),var_dict.items(), homo_dict.items()):
         ent_raster = v
         var_raster = v1
@@ -247,11 +254,7 @@ if __name__ == '__main__':
         outFile = r"C:\workspace\GLCM\output\least_sqares_classification" + os.sep + k +"_median_Sed_Class_3_variable.tif"
         #======================================================
         ## inputs
-        w = [1,1,1] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
-        
-        # calibration matrix consisting of N rows (substrates, e.g. 4 (null, sand, gravel, boulders)) and M columns (classifiers - e.g M=3 for entropy, homo, and glcm variance)
-        # so calib contains the means of those classifier variables per substrate
-        # note that M can be more than 3
+        w = [0.1,0.7,0.2] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         calib = np.asarray(calib_df.values,dtype='float')
         vec1 = ent_data.flatten()#flattened array of homogeneity values from a given sample (sidescan)
@@ -302,44 +305,45 @@ if __name__ == '__main__':
 
         del k, k1, k2, v1, v, v2, sed_class, sed_df, sand_conf, rock_conf, gravel_conf,prc_sand,prc_gravel,prc_rock,ss_resid,vec1,vec2,vec3,outFile,homo_data,var_data,ent_data,ind,gt,Nx,Ny,ent_raster,homo_raster,var_raster
 
-#classification results       
-rasters = [r"C:\workspace\GLCM\output\least_sqares_classification\R01346_median_Sed_Class_3_variable.tif", 
-           r"C:\workspace\GLCM\output\least_sqares_classification\R01765_median_Sed_Class_3_variable.tif", 
-           r"C:\workspace\GLCM\output\least_sqares_classification\R01767_median_Sed_Class_3_variable.tif"]
-
-shps = [r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_800_3class.shp", 
-        r"C:\workspace\Merged_SS\window_analysis\shapefiles\R01765.shp", 
-        r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"]
-
-#n=0
-for n in xrange(len(rasters)):
-    raster = rasters[n]
-    shp = shps[n]
-    subs = get_subs(shp)
-    stats = zonal_stats(shp, raster, categorical=True, nodata=-99)
-    if raster == rasters[0]:
-        merge_subs = subs
-        merge_df = pd.DataFrame(stats)
-    else:
-        merge_subs.extend(subs)
-        merge_df = pd.concat([merge_df,pd.DataFrame(stats)])
-    del stats, shp,raster,subs
+    #classification results       
+    rasters = [r"C:\workspace\GLCM\output\least_sqares_classification\R01346_median_Sed_Class_3_variable.tif", 
+               r"C:\workspace\GLCM\output\least_sqares_classification\R01765_median_Sed_Class_3_variable.tif", 
+               r"C:\workspace\GLCM\output\least_sqares_classification\R01767_median_Sed_Class_3_variable.tif"]
     
-del n
-
-merge_df['substrate'] = merge_subs
-
-merge_df.rename(columns = {0.0:'null',1.0:'Sand',2.0:'Gravel',3.0:'Boulders'},inplace=True)
-merge_df = merge_df[['null','Sand','Gravel','Boulders','substrate']]
-del merge_df
-pvt = pd.pivot_table(merge_df, index=['substrate'],values=['null','Sand','Gravel','Boulders'],aggfunc=np.nansum)
-
-#Percentage classification table
-class_df = pvt.div(pvt.sum(axis=1), axis=0)    
-writer = pytablewriter.MarkdownTableWriter()
-writer.table_name = "GLCM Variance Table"
-writer.header_list = list(class_df.columns.values)
-writer.value_matrix = class_df.values.tolist()
-table = writer.write_table()   
+    shps = [r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_800_3class.shp", 
+            r"C:\workspace\Merged_SS\window_analysis\shapefiles\R01765.shp", 
+            r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"]
     
-del
+    #n=0
+    for n in xrange(len(rasters)):
+        raster = rasters[n]
+        shp = shps[n]
+        subs = get_subs(shp)
+        stats = zonal_stats(shp, raster, categorical=True, nodata=-99)
+        if raster == rasters[0]:
+            merge_subs = subs
+            merge_df = pd.DataFrame(stats)
+        else:
+            merge_subs.extend(subs)
+            merge_df = pd.concat([merge_df,pd.DataFrame(stats)])
+        del stats, shp,raster,subs
+        
+    del n
+    
+    merge_df['substrate'] = merge_subs
+    
+    merge_df.rename(columns = {0.0:'null',1.0:'Sand',2.0:'Gravel',3.0:'Boulders'},inplace=True)
+    merge_df = merge_df[['null','Sand','Gravel','Boulders','substrate']]
+    
+    pvt = pd.pivot_table(merge_df, index=['substrate'],values=['null','Sand','Gravel','Boulders'],aggfunc=np.nansum)
+    del merge_df
+    #Percentage classification table
+    class_df = pvt.div(pvt.sum(axis=1), axis=0)
+
+    writer = pytablewriter.MarkdownTableWriter()
+    writer.table_name = "Non-negative Least Squares Classification Results"
+    writer.header_list = list(class_df.columns.values)
+    writer.value_matrix = class_df.values.tolist()
+    writer.write_table()   
+        
+
