@@ -7,13 +7,24 @@ Created on Tue Nov 29 13:43:32 2016
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+from sklearn.metrics import confusion_matrix, classification_report
 import numpy as np
 import pandas as pd
 from sklearn.mixture import GaussianMixture
 from sklearn.mixture import BayesianGaussianMixture
 from sklearn.model_selection import StratifiedKFold
 from scipy import stats
+import pytablewriter
+
+def cm_markdown(cm,name):
+    writer = pytablewriter.MarkdownTableWriter()
+    writer.table_name = name + ' confusion matrix'
+    writer.header_list = ['index','sand','gracel','boulders']
+    index = ['sand','gravel','boulders']
+    cm = np.c_[index,cm]
+    writer.value_matrix = cm
+    writer.write_table()
+    
 print(__doc__)
 
 colors = ['navy', 'turquoise', 'darkorange']
@@ -84,7 +95,7 @@ for index, (name, estimator) in enumerate(estimators.items()):
     # Since we have class labels for the training data, we can
 #     initialize the GMM parameters in a supervised manner.
     #estimator.means_init = np.array([X_train[y_train.flatten() == i+1].mean(axis=0) for i in range(n_classes)])
-    estimator.verbose = 1
+    #estimator.verbose = 1
     # Train the other parameters using the EM algorithm.
     estimator.fit(X_train)
 
@@ -117,13 +128,14 @@ for index, (name, estimator) in enumerate(estimators.items()):
     plt.xticks(())
     plt.yticks(())
     plt.title(name)
-
+    cm = confusion_matrix(y_test,y_test_pred +1).astype('float') / confusion_matrix(y_test,y_test_pred +1).sum(axis=1)[:, np.newaxis]
+    cm_markdown(cm,name)
 plt.legend(scatterpoints=1, loc='lower right', prop=dict(size=12))
 
 
 plt.show()
         
-        
+ 
         
 
 
