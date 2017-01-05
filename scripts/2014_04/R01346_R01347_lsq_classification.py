@@ -199,9 +199,9 @@ def CreateRaster(sed_class,gt,outFile):
       
 if __name__ == '__main__':
     
-    ent_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_entropy_resampled.tif"
-    var_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_var_resampled.tif"
-    homo_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_homo_resampled.tif"
+    ent_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_entropy_2_resampled.tif"
+    var_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_var_2_resampled.tif"
+    homo_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_homo_2_resampled.tif"
 
        
     homo = r"C:\workspace\GLCM\d_5_and_angle_0\homo_3_zonal_stats_merged.csv"
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     p_25 = get_center(homo_df,var_df,ent_df,'percentile_25')
     p_50 = get_center(homo_df,var_df,ent_df,'percentile_50')
     p_75 = get_center(homo_df,var_df,ent_df,'percentile_75')
-    #df = p_50
+    df = p_50
     for df in [p_25,p_50,p_75]:
         
         if df.equals(p_25):
@@ -241,7 +241,7 @@ if __name__ == '__main__':
         
         #======================================================
         ## inputs
-        w = [0.2, 0.1, 0.7] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
+        w = [0.13, 0.24, 0.63] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         # calibration matrix consisting of N rows (substrates, e.g. 4 (null, sand, gravel, boulders)) and M columns (classifiers - e.g M=3 for entropy, homo, and glcm variance)
         # so calib contains the means of those classifier variables per substrate
@@ -280,7 +280,7 @@ if __name__ == '__main__':
         
         import matplotlib.pyplot as plt
         
-        plt.imshow(ss_resid);plt.colorbar();plt.show()
+        #plt.imshow(ss_resid);plt.colorbar();plt.show()
         
         # =============== define confidence metric
         sand_conf = prc_sand*(1-prc_rock)*(1-prc_gravel)

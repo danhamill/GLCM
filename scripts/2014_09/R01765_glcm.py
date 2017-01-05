@@ -212,18 +212,12 @@ if __name__ == '__main__':
         meanFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_mean.tif"
         varFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2" + os.sep + meter +os.sep+"R01765_" + meter + "_var.tif"
         
-              #Dont Change anythong below here
+        #Dont Change anythong below here
         merge, xx, yy, gt = read_raster(in_raster)
         
         merge[np.isnan(merge)] = 0
         
         Z,ind = sliding_window(merge,(win,win),(win,win))
-        
-        #Data to make raster resolution equal to window size
-        
-        thing, x,y,gt = read_raster(r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_entropy_resampled.tif")
-        Ny, Nx = np.shape(thing)
-        del x,y
         
         w = Parallel(n_jobs = 1, verbose=0)(delayed(p_me)(Z[k], win, dist, angle) for k in xrange(len(Z)))
         
@@ -237,57 +231,62 @@ if __name__ == '__main__':
         mean = [a[7] for a in w]
         var  = [a[8] for a in w]
         
+        
         #Reshape to match number of windows
         plt_cont = np.reshape(cont , ( ind[0], ind[1] ) )
-        plt_cont = np.column_stack([plt_cont,np.zeros(plt_cont.shape[0])])
-        plt_cont[np.isnan(thing)]= np.nan
-        
         plt_diss = np.reshape(diss , ( ind[0], ind[1] ) )
-        plt_diss = np.column_stack([plt_diss,np.zeros(plt_diss.shape[0])])
-        plt_diss[np.isnan(thing)]= np.nan
-        
         plt_homo = np.reshape(homo , ( ind[0], ind[1] ) )
-        plt_homo = np.column_stack([plt_homo,np.zeros(plt_homo.shape[0])])
-        plt_homo[np.isnan(thing)]= np.nan
-        
         plt_eng = np.reshape(eng , ( ind[0], ind[1] ) )
-        plt_eng = np.column_stack([plt_eng,np.zeros(plt_eng.shape[0])])
-        plt_eng[np.isnan(thing)]= np.nan
-        
         plt_corr = np.reshape(corr , ( ind[0], ind[1] ) )
-        plt_corr = np.column_stack([plt_corr,np.zeros(plt_corr.shape[0])])
-        plt_corr[np.isnan(thing)]= np.nan
-        
         plt_ASM =  np.reshape(ASM , ( ind[0], ind[1] ) )
-        plt_ASM = np.column_stack([plt_ASM,np.zeros(plt_ASM.shape[0])])
-        plt_ASM[np.isnan(thing)]= np.nan
-        
         plt_ent = np.reshape(ENT, (ind[0],ind[1]))
-        plt_ent = np.column_stack([plt_ent,np.zeros(plt_ent.shape[0])])
-        plt_ent[np.isnan(thing)]= np.nan
-        
-        plt_mean = np.reshape(mean, (ind[0],ind[1]))
-        plt_mean = np.column_stack([plt_mean,np.zeros(plt_mean.shape[0])])
-        plt_mean[np.isnan(thing)]= np.nan
-        
+        plt_mean =  np.reshape(mean , ( ind[0], ind[1] ) )
         plt_var = np.reshape(var, (ind[0],ind[1]))
-        plt_var = np.column_stack([plt_var,np.zeros(plt_var.shape[0])])
-        plt_var[np.isnan(thing)]= np.nan
+        plt_var[plt_var>10] = 0
+        del cont, diss, homo, eng, corr, ASM, ENT
         
-        del cont, diss, homo, eng, corr, ASM, ENT, mean, var, w,Z,ind,Ny,Nx
+        thing, x,y,gt = read_raster(r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_entropy_resampled.tif")
+        Ny, Nx = np.shape(thing)
+        del x,y
+        
+        
+        #Resize Images to receive texture and define filenames
+        contrast = im_resize(plt_cont,Nx,Ny)
+        contrast[np.isnan(thing)]=np.nan
+        dissimilarity = im_resize(plt_diss,Nx,Ny)
+        dissimilarity[np.isnan(thing)]=np.nan    
+        homogeneity = im_resize(plt_homo,Nx,Ny)
+        homogeneity[np.isnan(thing)]=np.nan
+        energy = im_resize(plt_eng,Nx,Ny)
+        energy[np.isnan(thing)]=np.nan
+        correlation = im_resize(plt_corr,Nx,Ny)
+        correlation[np.isnan(thing)]=np.nan
+        ASM = im_resize(plt_ASM,Nx,Ny)
+        ASM[np.isnan(thing)]=np.nan
+        ENT = im_resize(plt_ent,Nx,Ny)
+        ENT[np.isnan(thing)]=np.nan
+        mean = im_resize(plt_mean,Nx,Ny)
+        mean[np.isnan(thing)]=np.nan
+        var = im_resize(plt_var,Nx,Ny)
+        var[var<0] = np.nan
+        var[np.isnan(thing)]=np.nan
+        del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent
+    
+        
+        del w,Z,ind,Ny,Nx
         
         driverName= 'GTiff'    
         epsg_code=26949
         proj = osr.SpatialReference()
         proj.ImportFromEPSG(epsg_code)
         
-        CreateRaster(xx, yy, plt_cont, gt, proj,driverName,contFile) 
-        CreateRaster(xx, yy, plt_diss, gt, proj,driverName,dissFile)
-        CreateRaster(xx, yy, plt_homo, gt, proj,driverName,homoFile)
-        CreateRaster(xx, yy, plt_eng, gt, proj,driverName,energyFile)
-        CreateRaster(xx, yy, plt_corr, gt, proj,driverName,corrFile)
-        CreateRaster(xx, yy, plt_ASM, gt, proj,driverName,ASMFile)
-        CreateRaster(xx, yy, plt_ent, gt, proj,driverName,ENTFile)
-        CreateRaster(xx, yy, plt_mean, gt, proj,driverName,meanFile)
-        CreateRaster(xx, yy, plt_var, gt, proj,driverName,varFile)
-        del plt_cont, merge, xx, yy, gt, meter, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent, plt_mean, plt_var,thing
+        CreateRaster(xx, yy, contrast, gt, proj,driverName,contFile) 
+        CreateRaster(xx, yy, dissimilarity, gt, proj,driverName,dissFile)
+        CreateRaster(xx, yy, homogeneity, gt, proj,driverName,homoFile)
+        CreateRaster(xx, yy, energy, gt, proj,driverName,energyFile)
+        CreateRaster(xx, yy, correlation, gt, proj,driverName,corrFile)
+        CreateRaster(xx, yy, ASM, gt, proj,driverName,ASMFile)
+        CreateRaster(xx, yy, ENT, gt, proj,driverName,ENTFile)
+        CreateRaster(xx, yy, mean, gt, proj,driverName,meanFile)
+        CreateRaster(xx, yy, var, gt, proj,driverName,varFile)
+        del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM, ENT

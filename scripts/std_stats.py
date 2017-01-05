@@ -111,7 +111,7 @@ def assign_meter_class(row):
     if row['grid_size']==20:
         return "20 meter grid"
         
-pct_include = r"100"        
+pct_include = r"25"        
 win_sizes = [8,12,20,40,80]
 for win_size in win_sizes:
     #Stuff to change

@@ -204,9 +204,9 @@ def CreateRaster(sed_class,gt,outFile):
       
 if __name__ == '__main__':
     
-    ent_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_entropy_resampled.tif"
-    var_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_var_resampled.tif"
-    homo_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_homo_resampled.tif"
+    ent_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_entropy.tif"
+    var_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_var.tif"
+    homo_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_homo.tif"
     
 
        
@@ -214,8 +214,7 @@ if __name__ == '__main__':
     var = r"C:\workspace\GLCM\d_5_and_angle_0\var_3_zonal_stats_merged.csv"
     ent = r"C:\workspace\GLCM\d_5_and_angle_0\entropy_3_zonal_stats_merged.csv"
     
-    outFile = r"C:\workspace\GLCM\output\least_sqares_classification\2014_09\R01767_percentile75_Sed_Class.tif"
-    
+        
     homo_df = pd.read_csv(homo,sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     var_df = pd.read_csv(var, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
     ent_df = pd.read_csv(ent, sep=',',usecols=['percentile_25','percentile_50','percentile_75','substrate'])
@@ -244,7 +243,7 @@ if __name__ == '__main__':
         outFile = r"C:\workspace\GLCM\output\least_sqares_classification\2014_09\R01767_"+metric+"_Sed_Class.tif"
         #======================================================
         ## inputs
-        w = [0.2, 0.1, 0.7] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
+        w = [0.13, 0.24, 0.63] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         # calibration matrix consisting of N rows (substrates, e.g. 4 (null, sand, gravel, boulders)) and M columns (classifiers - e.g M=3 for entropy, homo, and glcm variance)
         # so calib contains the means of those classifier variables per substrate

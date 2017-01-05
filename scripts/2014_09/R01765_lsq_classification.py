@@ -199,9 +199,9 @@ def CreateRaster(sed_class,gt,outFile):
       
 if __name__ == '__main__':
     
-    ent_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_entropy_resampled.tif"
-    var_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_var_resampled.tif"
-    homo_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_homo_resampled.tif"
+    ent_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_entropy.tif"
+    var_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_var.tif"
+    homo_raster = r"C:\workspace\GLCM\output\glcm_rasters\2014_09_2\3\R01765_3_homo.tif"
 
        
     homo = r"C:\workspace\GLCM\d_5_and_angle_0\homo_3_zonal_stats_merged.csv"
@@ -238,7 +238,7 @@ if __name__ == '__main__':
         
         #======================================================
         ## inputs
-        w = [0.2, 0.1, 0.7] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
+        w = [0.13, 0.24, 0.63] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         # calibration matrix consisting of N rows (substrates, e.g. 4 (null, sand, gravel, boulders)) and M columns (classifiers - e.g M=3 for entropy, homo, and glcm variance)
         # so calib contains the means of those classifier variables per substrate

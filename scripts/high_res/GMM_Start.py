@@ -12,6 +12,16 @@ import pandas as pd
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix, classification_report
+import pytablewriter
+
+def cm_markdown(cm,name):
+    writer = pytablewriter.MarkdownTableWriter()
+    writer.table_name = name + ' confusion matrix'
+    writer.header_list = ['index','sand','gracel','boulders']
+    index = ['sand','gravel','boulders']
+    cm = np.c_[index,cm]
+    writer.value_matrix = cm
+    writer.write_table()
 
 print(__doc__)
 
@@ -82,11 +92,11 @@ plt.subplots_adjust(bottom=.01, top=0.95, hspace=.15, wspace=.05,
                     left=.01, right=.99)
 
 
-for index, (name, estimator) in enumerate(estimators.items()[2:3]):
+for index, (name, estimator) in enumerate(estimators.items()):
     # Since we have class labels for the training data, we can
 #     initialize the GMM parameters in a supervised manner.
     estimator.means_init = np.array([X_train[y_train.flatten() == i+1].mean(axis=0) for i in range(n_classes)])
-    estimator.verbose = 1
+    #estimator.verbose = 1
     # Train the other parameters using the EM algorithm.
     estimator.fit(X_train)
 
@@ -105,39 +115,53 @@ for index, (name, estimator) in enumerate(estimators.items()[2:3]):
         plt.scatter(tmp_data[:, 0], tmp_data[:, 1], marker='x', color=color)
 
     y_train_pred = estimator.predict(X_train)
-    y_train_pred=  y_train_pred.reshape(1,-1).T
-    gravel_accuracy = np.mean(y_train_pred[y_train==2].ravel() == y_train[y_train==2].ravel())
-    sand_accuracy = np.mean(y_train_pred[y_train==1].ravel() == y_train[y_train==1].ravel())
-    boulders_accuracy = np.mean(y_train_pred[y_train==3].ravel() == y_train[y_train==3].ravel())
-    print sand_accuracy, gravel_accuracy, boulders_accuracy
+    
+
+    
     
     train_accuracy = np.mean(y_train_pred.ravel() == y_train.ravel()) * 100
     plt.text(0.05, 0.9, 'Train accuracy: %.1f' % train_accuracy,
              transform=h.transAxes)
 
     y_test_pred = estimator.predict(X_test)
-    y_test_pred = y_test_pred.reshape(1, -1).T
+    
     test_accuracy = np.mean(y_test_pred.ravel() == y_test.ravel()) * 100
-    gravel_accuracy = np.mean(y_test_pred[y_test==2].ravel() == y_test[y_test==2].ravel())
-    sand_accuracy = np.mean(y_test_pred[y_test==1].ravel() == y_test[y_test==1].ravel())
-    boulders_accuracy = np.mean(y_test_pred[y_test==3].ravel() == y_test[y_test==3].ravel())
+
     plt.text(0.05, 0.8, 'Test accuracy: %.1f' % test_accuracy,
              transform=h.transAxes)
 
     plt.xticks(())
     plt.yticks(())
     plt.title(name)
+    cm = confusion_matrix(y_test,y_test_pred +1).astype('float') / confusion_matrix(y_test,y_test_pred +1).sum(axis=1)[:, np.newaxis]
+    cm_markdown(cm,name)
 
 plt.legend(scatterpoints=1, loc='lower right', prop=dict(size=12))
 
 
 plt.show()
 
- 
-cm = confusion_matrix(y_test,y_test_pred +1).astype('float') / confusion_matrix(y_test,y_test_pred +1).sum(axis=1)[:, np.newaxis]
-cr = classification_report(y_test,y_test_pred +1)
-print cm
-print cr
+
+##Begin of histogram/fitted gaussian distributions plotting routines
+#fig, (ax1,ax2,a3) = plt.subplots(nrows=3)
+##x = np.c_[np.linspace(0, 0.8, 1000),
+##               np.linspace(1,6,1000),
+##                np.linspace(0.2,45,1000)]
+#x = np.linspace(0,0.8,3753)
+#logprob = estimator.score_samples(X_train)
+#resp = estimator.predict_proba(X_train)
+#pdf = np.exp(logprob)
+#pdf_individual = resp * pdf[:, np.newaxis]
+#ax1.hist(X_train[:,0],30, normed=True, histtype='stepfilled', alpha=0.4)    
+##ax1.plot(x, pdf, '-k')
+#ax1.plot(x, pdf_individual, '--k')
+#ax1.text(0.04, 0.96, "Best-fit Mixture",
+#        ha='left', va='top', transform=ax.transAxes)
+#ax1.set_xlabel('$x$')
+#ax1.set_ylabel('$p(x)$')
+#    
+#
+#plt.show()    
 ##################################################################################################################################
 #from scipy import linalg
 #import itertools

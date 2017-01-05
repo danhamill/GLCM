@@ -12,6 +12,8 @@ import matplotlib.patches as mpatches
 import os
 import numpy as np
 from scikits.bootstrap import bootstrap as boot
+import pytablewriter
+
 
 
 def centeroidnp(df,query1,metric):
@@ -81,6 +83,13 @@ homo_df['Margin_of_Error'] = (homo_df['ubound']-homo_df['lbound'])/2
 homo_df = homo_df[['mean','Margin_of_Error']].reset_index()
 homo_df['plot_num'] = [0,1,2]
 
+writer = pytablewriter.MarkdownTableWriter()
+writer.table_name = "Homogeneity Table"
+writer.header_list = ["substrate","mean","margin of error"]
+writer.value_matrix = homo_df.values.tolist()
+table = writer.write_table()
+
+
 ent_df= pd.DataFrame(index=['Sand','Gravel','Boulders'], columns=['lbound','ubound'])
 ent_df.loc['Sand'] = pd.Series({'lbound':boot.ci(sand['entropy_median'],np.median,alpha=0.05)[0],'ubound': boot.ci(sand['entropy_median'],np.median,alpha=0.05)[1]})
 ent_df.loc['Gravel'] = pd.Series({'lbound':boot.ci(gravel['entropy_median'],np.median,alpha=0.05)[0],'ubound': boot.ci(gravel['entropy_median'],np.median,alpha=0.05)[1]})
@@ -90,6 +99,13 @@ ent_df['Margin_of_Error'] = (ent_df['ubound']-ent_df['lbound'])/2
 ent_df = ent_df[['mean','Margin_of_Error']].reset_index()
 ent_df['plot_num'] = [0,1,2]
 
+writer = pytablewriter.MarkdownTableWriter()
+writer.table_name = "Entropy Table"
+writer.header_list = ["substrate","mean","margin of error"]
+writer.value_matrix = ent_df.values.tolist()
+table = writer.write_table()
+
+
 var_df= pd.DataFrame(index=['Sand','Gravel','Boulders'], columns=['lbound','ubound'])
 var_df.loc['Sand'] = pd.Series({'lbound':boot.ci(sand['var_median'],np.median,alpha=0.05)[0],'ubound': boot.ci(sand['var_median'],np.median,alpha=0.05)[1]})
 var_df.loc['Gravel'] = pd.Series({'lbound':boot.ci(gravel['var_median'],np.median,alpha=0.05)[0],'ubound': boot.ci(gravel['var_median'],np.median,alpha=0.05)[1]})
@@ -98,6 +114,16 @@ var_df['mean']= var_df['lbound'] + (var_df['ubound']-var_df['lbound'])/2
 var_df['Margin_of_Error'] = (var_df['ubound']-var_df['lbound'])/2
 var_df = var_df[['mean','Margin_of_Error']].reset_index()
 var_df['plot_num'] = [0,1,2]
+
+writer = pytablewriter.MarkdownTableWriter()
+writer.table_name = "GLCM Variance Table"
+writer.header_list = ["substrate","mean","margin of error"]
+writer.value_matrix = var_df.values.tolist()
+table = writer.write_table()
+
+
+
+
 
 fig,(ax,ax1,ax2) = plt.subplots(ncols=3)
 homo_df['mean'].plot(ax = ax, xticks=homo_df.index, yerr=homo_df['Margin_of_Error'],use_index=True,xlim=(-0.5,2.5),linestyle=' ',marker='o')
@@ -111,4 +137,5 @@ ax1.set_xticklabels(ent_df['index'].values)
 var_df['mean'].plot(ax = ax2, xticks=var_df.index, yerr=var_df['Margin_of_Error'],use_index=True,xlim=(-0.5,2.5),linestyle=' ',marker='o')
 ax2.set_ylabel('GLCM Variance')
 ax2.set_xticklabels(var_df['index'].values)
+plt.suptitle('GLCM Substrate Characteristics ')
 plt.tight_layout()

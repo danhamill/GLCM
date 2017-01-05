@@ -99,7 +99,7 @@ def plot_agg_table(agg_tbl,oName,meter):
     
     
 if __name__ == '__main__':  
-    win_sizes = [8,12,20,40]
+    win_sizes = [8,12,20,40,80]
     for win_size in win_sizes[:]:   
         win = win_size
         meter = str(win/4)
@@ -191,6 +191,9 @@ if __name__ == '__main__':
             merge.rename(columns={'mean_x':'ss_mean','mean_y':'glcm_mean'},inplace = True)
             merge['sed5class'] = pts_df['sed5class']
             merge = merge[merge['count_x']==bound]
+            
+            oName = r"C:\workspace\GLCM\output\2014_04" + os.sep + variable + "_ss_comparison_" + meter +".csv"   
+            merge.to_csv(oName, sep=',')
 
             oName = r"C:\workspace\GLCM\output\2014_05" + os.sep + variable + "_ss_comparison_" + meter +".png"
             fig, (ax1,ax2) = plt.subplots(nrows=2)

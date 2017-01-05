@@ -8,8 +8,10 @@ Created on Mon Oct 17 16:23:42 2016
 import pandas as pd
 from glob import glob
 import os
+import sys
 
-
+#root = sys.argv[1]
+root = r'C:\workspace\GLCM\d_5_and_angle_0'
 files_04 = glob(r"C:\workspace\GLCM\output\2014_04\*zonalstats*csv")
 files_09 = glob(r"C:\workspace\GLCM\output\2014_09\*zonalstats*csv")
 files_09_2 = glob(r"C:\workspace\GLCM\output\2014_09_2\*zonalstats*csv")
@@ -31,7 +33,7 @@ for n in xrange(len(files_04)):
     meter = file_04.split('\\')[-1].split('.')[0].split('_')[-2] 
    
     
-    oName = r"C:\workspace\GLCM\output" + os.sep + variable + "_" + meter + "_zonal_stats_merged.csv"
+    oName = root + os.sep + variable + "_" + meter + "_zonal_stats_merged.csv"
     merge.rename(columns={'glcm_mean':variable + '_mean'},inplace=True)
     merge.to_csv(oName, sep=',', index=False)
     

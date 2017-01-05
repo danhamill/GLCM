@@ -251,6 +251,7 @@ if __name__ == '__main__':
         plt_ent = np.reshape(ENT, (ind[0],ind[1]))
         plt_mean =  np.reshape(mean , ( ind[0], ind[1] ) )
         plt_var = np.reshape(var, (ind[0],ind[1]))
+        plt_var[plt_var>10] = 0
         
         del cont, diss, homo, eng, corr, ASM, ENT
         
@@ -277,6 +278,7 @@ if __name__ == '__main__':
         mean = im_resize(plt_mean,Nx,Ny)
         mean[np.isnan(thing)]=np.nan
         var = im_resize(plt_var,Nx,Ny)
+        var[var<0] = np.nan
         var[np.isnan(thing)]=np.nan
         del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent
     

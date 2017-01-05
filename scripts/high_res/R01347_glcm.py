@@ -4,7 +4,7 @@ Created on Mon Oct 10 10:56:18 2016
 
 @author: dan
 """
-
+import sys
 import gdal, osr
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
@@ -24,7 +24,7 @@ def angle_converter(angle):
         return np.pi/2
     if int(angle) == 135:
         return 0.75*np.pi
-
+        
 def im_resize(im,Nx,Ny):
     '''
     resize array by bivariate spline interpolation
@@ -74,7 +74,6 @@ def p_me(Z, win,dist,angle):
         return (0,0,0,0,0,0,0,0,0)
         
         
-        
 def read_raster(in_raster):
     in_raster=in_raster
     ds = gdal.Open(in_raster)
@@ -118,7 +117,18 @@ def norm_shape(shap):
 
 def sliding_window(a, ws, ss = None, flatten = True):
     '''
-    Return a sliding window over a in any number of dimensions
+    Parameters:
+        a  - an n-dimensional numpy array
+        ws - an int (a is 1D) or tuple (a is 2D or greater) representing the size 
+             of each dimension of the window
+        ss - an int (a is 1D) or tuple (a is 2D or greater) representing the 
+             amount to slide the window in each dimension. If not specified, it
+             defaults to ws.
+        flatten - if True, all slices are flattened, otherwise, there is an 
+                  extra dimension for each dimension of the input.
+     
+    Returns
+        an array containing each n-dimensional window from a
     '''      
     if None is ss:
         # ss was not provided. the windows will not overlap in any direction.
@@ -172,7 +182,6 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     '''
     std = np.squeeze(std)
     std[np.isinf(std)] = -99
-    std[std>100] = -99
     driver = gdal.GetDriverByName(driverName)
     rows,cols = np.shape(std)
     ds = driver.Create( outFile, cols, rows, 1, gdal.GDT_Float32)      
@@ -187,33 +196,36 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     del ds
     
     
+#Stuff to change
+    
 if __name__ == '__main__':  
     
     angle = 0#sys.argv[1]
     dist = 5#int(sys.argv[2])
     angle = angle_converter(angle)
-    print 'Now working on %s angle and %ss distance...' %(str(angle), str(dist))  
-    #Stuff to change
+    print 'Now working on %s angle and %ss distance...' %(str(angle), str(dist))
+    
     win_sizes = [8,12,20,40,80]
     for win_size in win_sizes[1:2]:   
-        in_raster = r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01767_raster.tif"
+        in_raster = r"C:\workspace\Merged_SS\raster\2014_04\ss_2014_04_R01347_clip_raster.tif"
         win = win_size
         meter = str(win/4)
-        contFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_contrast.tif"
-        dissFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_diss.tif"
-        homoFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_homo.tif"
-        energyFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_energy.tif"
-        corrFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_corr.tif"
-        ASMFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_asm.tif"
-        ENTFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_entropy.tif"
-        meanFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_mean.tif"
-        varFile = r"C:\workspace\GLCM\output\glcm_rasters\2014_09" + os.sep + meter +os.sep+"R01767_" + meter + "_var.tif"
+        print 'Now working on %s meter grid...' %(meter,)
+        contFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_contrast.tif"
+        dissFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_diss.tif"
+        homoFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_homo.tif"
+        energyFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_energy.tif"
+        corrFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_corr.tif"
+        ASMFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_asm.tif"
+        ENTFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_entropy.tif"
+        meanFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_mean.tif"
+        varFile = r"C:\workspace\GLCM\output\new_glcm_rasters\2014_04" + os.sep + meter +os.sep+"R01347_" + meter + "_var.tif"
+     
 
         
-
-       #Dont Change anythong below here
+        #Dont Change anythong below here
         merge, xx, yy, gt = read_raster(in_raster)
-        
+        Ny, Nx = np.shape(merge)
         merge[np.isnan(merge)] = 0
         
         Z,ind = sliding_window(merge,(win,win),(win,win))
@@ -229,6 +241,7 @@ if __name__ == '__main__':
         ENT  = [a[6] for a in w]
         mean = [a[7] for a in w]
         var  = [a[8] for a in w]
+        del a
         
         #Reshape to match number of windows
         plt_cont = np.reshape(cont , ( ind[0], ind[1] ) )
@@ -240,35 +253,38 @@ if __name__ == '__main__':
         plt_ent = np.reshape(ENT, (ind[0],ind[1]))
         plt_mean =  np.reshape(mean , ( ind[0], ind[1] ) )
         plt_var = np.reshape(var, (ind[0],ind[1]))
-        plt_var[plt_var>10] = 0
-        del cont, diss, homo, eng, corr, ASM, ENT
         
-        thing, x,y,gt = read_raster(r"C:\workspace\GLCM\output\glcm_rasters\2014_09\3\R01767_3_entropy_resampled.tif")
-        Ny, Nx = np.shape(thing)
-        del x,y
+        
+        del cont, diss, homo, eng, corr, ASM, ENT, mean, var
+        
+#        thing, x,y,gt = read_raster(r"C:\workspace\GLCM\output\glcm_rasters\2014_04\3\R01346_R01347_3_entropy_resampled.tif")
+#        Ny, Nx = np.shape(thing)
+#        del x,y
         
         
         #Resize Images to receive texture and define filenames
         contrast = im_resize(plt_cont,Nx,Ny)
-        contrast[np.isnan(thing)]=np.nan
+        contrast[merge==0]=np.nan
         dissimilarity = im_resize(plt_diss,Nx,Ny)
-        dissimilarity[np.isnan(thing)]=np.nan    
+        dissimilarity[merge==0]=np.nan    
         homogeneity = im_resize(plt_homo,Nx,Ny)
-        homogeneity[np.isnan(thing)]=np.nan
+        homogeneity[merge==0]=np.nan
+        homogeneity[homogeneity<0]=np.nan
         energy = im_resize(plt_eng,Nx,Ny)
-        energy[np.isnan(thing)]=np.nan
+        energy[merge==0]=np.nan
         correlation = im_resize(plt_corr,Nx,Ny)
-        correlation[np.isnan(thing)]=np.nan
+        correlation[merge==0]=np.nan
         ASM = im_resize(plt_ASM,Nx,Ny)
-        ASM[np.isnan(thing)]=np.nan
+        ASM[merge==0]=np.nan
         ENT = im_resize(plt_ent,Nx,Ny)
-        ENT[np.isnan(thing)]=np.nan
+        ENT[merge==0]=np.nan
+        ENT[ENT<0]=np.nan
         mean = im_resize(plt_mean,Nx,Ny)
-        mean[np.isnan(thing)]=np.nan
+        mean[merge==0]=np.nan
         var = im_resize(plt_var,Nx,Ny)
-        var[np.isnan(thing)]=np.nan
+        var[merge==0]=np.nan
         var[var<0] = np.nan
-        del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent
+        del plt_cont, plt_diss, plt_homo, plt_eng, plt_corr, plt_ASM, plt_ent, plt_mean, plt_var
     
         
         del w,Z,ind,Ny,Nx
@@ -287,4 +303,5 @@ if __name__ == '__main__':
         CreateRaster(xx, yy, ENT, gt, proj,driverName,ENTFile)
         CreateRaster(xx, yy, mean, gt, proj,driverName,meanFile)
         CreateRaster(xx, yy, var, gt, proj,driverName,varFile)
-        del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM, ENT
+        
+        del contrast, merge, xx, yy, gt, meter, dissimilarity, homogeneity, energy, correlation, ASM, ENT, var, mean

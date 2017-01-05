@@ -12,53 +12,47 @@ import matplotlib.patches as mpatches
 import os
 import numpy as np
 from pandas.tools.plotting import table
-import random
-
+import sys
 
 def centeroidnp(df,query1,metric):
-    length = df.query(query1)['homo_'+ metric].dropna().values.size
-    sum_x = np.nansum(df.query(query1)['homo_'+ metric].values)
-    sum_y = np.nansum(df.query(query1)['entropy_' +  metric].values)
+    length = df.query(query1)['corr_'+ metric].dropna().values.size
+    sum_x = np.nansum(df.query(query1)['corr_'+ metric].values)
+    sum_y = np.nansum(df.query(query1)['var_' +  metric].values)
     return sum_x/length, sum_y/length
     
 def error_bars(df,query1,metric):
-    y_err = np.nanstd(df.query(query1)['entropy_' + metric].values)
-    x_err = np.nanstd(df.query(query1)['homo_'+ metric].values)
+    y_err = np.nanstd(df.query(query1)['var_' + metric].values)
+    x_err = np.nanstd(df.query(query1)['corr_'+ metric].values)
     return x_err, y_err
+    
+#root = sys.argv[1]
+root = 'C:\\workspace\\GLCM\\d_5_and_angle_0'
+files = glob(root + os.sep + '*.csv')
 
-root = r'C:\workspace\GLCM\new_output'
-files = glob(root + os.sep + '*zonal_stats_merged.csv')
 
-homo_list = files[6:7]
-entropy_list = files[5:6]
-
+corr_list = files[10:15]
+var_list = files[40:45]
 
 print "will save files to root directory %s" %(root,)
 
-
-for n in xrange(len(homo_list)):
+n=3
+for n in xrange(len(corr_list)):
     
-    homo = homo_list[n]
-    entropy = entropy_list[n]
+    homo = corr_list[n]
+    var = var_list[n]
     meter = homo.split('\\')[-1].split('_')[1]
     
     df1 = pd.read_csv(homo,sep=',')
-    df2 = pd.read_csv(entropy,sep=',')
-    df1.rename(columns={'max':'homo_max', 'mean':'homo_mean', 'median':'homo_median','min':'homo_min','percentile_25':'homo_25','percentile_50':'homo_50', 'percentile_75':'homo_75','std':'homo_std'},inplace=True)   
-    df2.rename(columns={'max':'entropy_max', 'mean':'entropy_mean', 'median':'entropy_median','min':'entropy_min','percentile_25':'entropy_25','percentile_50':'entropy_50', 'percentile_75':'entropy_75','std':'entropy_std'},inplace=True)   
+    df2 = pd.read_csv(var,sep=',')
+    df1.rename(columns={'max':'corr_max', 'mean':'corr_mean', 'median':'corr_median','min':'corr_min','percentile_25':'corr_25','percentile_50':'corr_50', 'percentile_75':'corr_75','std':'corr_std'},inplace=True)   
+    df2.rename(columns={'max':'var_max', 'mean':'var_mean', 'median':'var_median','min':'var_min','percentile_25':'var_25','percentile_50':'var_50', 'percentile_75':'var_75','std':'var_std'},inplace=True)   
     
     
     merge =df1.merge(df2,left_index=True, right_index=True, how='left')
     
-    merge = merge[['homo_mean','entropy_mean','substrate_x','homo_25','entropy_25','homo_75','entropy_75']].dropna()
+    merge = merge[['corr_mean','var_mean','substrate_x','corr_25','var_25','corr_75','var_75']]
     merge.rename(columns={'substrate_x':'substrate'},inplace=True)
     
-    grouped = merge.groupby('substrate')
-    sand = grouped.get_group('sand').sample(frac=0.8)
-    gravel = grouped.get_group('gravel').sample(frac=0.8)
-    boulders = grouped.get_group('boulders').sample(frac=0.8)
-    
-    print merge[merge.substrate.isin(random.sample(merge.substrate.unique(),3))].groupby('substrate').median()
     #Queries
     s_query = 'substrate == "sand"'
     g_query = 'substrate == "gravel"'
@@ -90,15 +84,15 @@ for n in xrange(len(homo_list)):
     red = mpatches.Patch(color='red',label='Boulders')
     
     
-    oName = root + os.sep + "homo_entropy_comparison_" + meter +".png"   
+    oName = root + os.sep + "corr_variance_comparison_expanded_" + meter +".png"   
     fig,axes = plt.subplots(figsize =(8,6),nrows=3,ncols=2)
     
-    merge.query('substrate == "sand"').plot.scatter(ax =axes[0,0], x='homo_25',y='entropy_25',color='blue')
+    merge.query('substrate == "sand"').plot.scatter(ax =axes[0,0], x='corr_25',y='var_25',color='blue')
     cent_df.query('index == "sand"').plot.scatter(ax = axes[0,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='blue',s=100)
-    merge.query('substrate == "gravel"').plot.scatter(ax =axes[0,0], x='homo_25',y='entropy_25',color='green')
+    merge.query('substrate == "gravel"').plot.scatter(ax =axes[0,0], x='corr_25',y='var_25',color='green')
     cent_df.query('index == "gravel"').plot.scatter(ax = axes[0,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='green',s=100)
     cent_df.query('index == "boulders"').plot.scatter(ax = axes[0,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='red',s=100)
-    merge.query('substrate == "boulders"').plot.scatter(ax =axes[0,0],x='homo_25',y='entropy_25',color='red')
+    merge.query('substrate == "boulders"').plot.scatter(ax =axes[0,0],x='corr_25',y='var_25',color='red')
     axes[0,0].legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, borderaxespad=0., handles=[blue,green,red], ncol=3, columnspacing=1, fontsize=8)
     
     axes[0,1].xaxis.set_visible(False)
@@ -122,12 +116,12 @@ for n in xrange(len(homo_list)):
     cent_df.loc['gravel'] = pd.Series({'x_cent':g_centroid[0] ,'y_cent': g_centroid[1],'y_err':g_err[1] ,'x_err':g_err[0]})
     cent_df.loc['boulders'] = pd.Series({'x_cent':b_centroid[0] ,'y_cent':b_centroid[1] ,'y_err': b_err[1],'x_err':b_err[0]})
     cent_df = cent_df.reset_index()
-    merge.query('substrate == "sand"').plot.scatter(ax =axes[1,0], x='homo_mean',y='entropy_mean',color='blue')
+    merge.query('substrate == "sand"').plot.scatter(ax =axes[1,0], x='corr_mean',y='var_mean',color='blue')
     cent_df.query('index == "sand"').plot.scatter(ax = axes[1,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='blue',s=100)
-    merge.query('substrate == "gravel"').plot.scatter(ax =axes[1,0], x='homo_mean',y='entropy_mean',color='green')
+    merge.query('substrate == "gravel"').plot.scatter(ax =axes[1,0], x='corr_mean',y='var_mean',color='green')
     cent_df.query('index == "gravel"').plot.scatter(ax = axes[1,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='green',s=100)
     cent_df.query('index == "boulders"').plot.scatter(ax = axes[1,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='red',s=100)
-    merge.query('substrate == "boulders"').plot.scatter(ax =axes[1,0],x='homo_mean',y='entropy_mean',color='red')
+    merge.query('substrate == "boulders"').plot.scatter(ax =axes[1,0],x='corr_mean',y='var_mean',color='red')
     #axes[1,0].legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
     
     axes[1,1].xaxis.set_visible(False)
@@ -153,13 +147,13 @@ for n in xrange(len(homo_list)):
     cent_df.loc['boulders'] = pd.Series({'x_cent':b_centroid[0] ,'y_cent':b_centroid[1] ,'y_err': b_err[1],'x_err':b_err[0]})
     
     cent_df = cent_df.reset_index()
-    merge.query('substrate == "sand"').plot.scatter(ax =axes[2,0], x='homo_75',y='entropy_75',color='blue')
+    merge.query('substrate == "sand"').plot.scatter(ax =axes[2,0], x='corr_75',y='var_75',color='blue')
     cent_df.query('index == "sand"').plot.scatter(ax = axes[2,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='blue',s=100)
     
-    merge.query('substrate == "gravel"').plot.scatter(ax =axes[2,0], x='homo_75',y='entropy_75',color='green')
+    merge.query('substrate == "gravel"').plot.scatter(ax =axes[2,0], x='corr_75',y='var_75',color='green')
     cent_df.query('index == "gravel"').plot.scatter(ax = axes[2,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='green',s=100)
     cent_df.query('index == "boulders"').plot.scatter(ax = axes[2,0], x='x_cent',y='y_cent', yerr= 'y_err', xerr='x_err',color='red',s=100)
-    merge.query('substrate == "boulders"').plot.scatter(ax =axes[2,0],x='homo_75',y='entropy_75',color='red')
+    merge.query('substrate == "boulders"').plot.scatter(ax =axes[2,0],x='corr_75',y='var_75',color='red')
     
     #axes[2,0].legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
     
@@ -174,7 +168,6 @@ for n in xrange(len(homo_list)):
     plt.suptitle(meter + ' meter grid')
     plt.tight_layout(pad=2)
     plt.savefig(oName,dpi=600)
-    plt.close()
-    print 'sucessifully made %s ' %(oName,)
+    
     del merge, cent_df,df1,df2,s_centroid,g_centroid,b_centroid,s_err,b_err,g_err
     

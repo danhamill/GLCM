@@ -30,7 +30,7 @@ def im_resize(im,Nx,Ny):
     newKernel = RectBivariateSpline(np.r_[:ny],np.r_[:nx],im)
     return newKernel(yy,xx)
     
-def p_me(Z):
+def p_me(Z, win):
     '''
     loop to standard deviation
     '''
@@ -44,7 +44,6 @@ def p_me(Z):
         ASM = greycoprops(glcm, 'ASM')
         return (cont, diss, homo, eng, corr, ASM)
     except:
-        print 'Something went wrong'
         return (0,0,0,0,0,0)
         
         
@@ -157,8 +156,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     std = np.squeeze(std)
     std[np.isinf(std)] = -99
     driver = gdal.GetDriverByName(driverName)
-    cols = int((np.max(xx) - np.min(xx)) / gt[1])+1
-    rows = int((np.max(yy) - np.min(yy)) / -gt[5])+1
+    rows,cols = np.shape(std)
     ds = driver.Create( outFile, cols, rows, 1, gdal.GDT_Float32)      
     if proj is not None:  
         ds.SetProjection(proj.ExportToWkt()) 
@@ -174,7 +172,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
 #Stuff to change
     
 if __name__ == '__main__':  
-    win_sizes = [8,12,20,40]
+    win_sizes = [8,12,20,40,80]
     for win_size in win_sizes[:]:   
         in_raster = r"C:\workspace\GLCM\input\2014_05\ss_R02028.tif"
         win = win_size
