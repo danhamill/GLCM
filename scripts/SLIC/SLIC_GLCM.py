@@ -12,7 +12,7 @@ import numpy as np
 import os
 from skimage.feature import greycomatrix, greycoprops
 from skimage.segmentation import slic, mark_boundaries
-
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
 def entropy_calc(glcm):
@@ -162,13 +162,21 @@ def crop_toseg(mask, im):
    return mask[top_left[0]:bottom_right[0]+1, top_left[1]:bottom_right[1]+1], im[top_left[0]:bottom_right[0]+1, top_left[1]:bottom_right[1]+1]  
 
 def plot_distributions(merge_dist):
+    #legend stuff
+    blue = mpatches.Patch(color='blue',label='Sand')
+    green = mpatches.Patch(color='green',label='Gravel')
+    red = mpatches.Patch(color='red',label='Boulders')
+    
     fig, [ax,ax1,ax2] = plt.subplots(nrows=3)
     merge_dist.groupby('sedclass')['Entropy'].plot.hist(ax=ax,bins=50,normed=True)    
     ax.set_xlabel('Entropy')
+    ax.legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
     merge_dist.groupby('sedclass')['Homogeneity'].plot.hist(ax=ax1,bins=50,normed=True)    
     ax1.set_xlabel('Homogeneity')
+    ax1.legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
     merge_dist.groupby('sedclass')['Variance'].plot.hist(ax=ax2,bins=50,normed=True)         
     ax2.set_xlabel('GLCM Variance')
+    ax2.legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
     plt.tight_layout()
     plt.show()
     plt.savefig(r'C:\workspace\GLCM\slic_output\GLCM_aggregrated_distributions.png',dpi=600)   
@@ -205,7 +213,7 @@ if __name__ == '__main__':
                 'R01767':r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"}  
     fnames = []
     
-    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items())[0:1]:
+    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
         
         print 'Now calculating GLCM metrics for %s...' %(k,)
         ss_raster = v
@@ -223,7 +231,7 @@ if __name__ == '__main__':
         segments_slic = slic(im, n_segments=500, compactness=.1,slic_zero=True)
         
         while seg_area(segments_slic,ss_raster)>1000:
-            print 'Average segment ares is %s.' %(str(seg_area(segments_slic,ss_raster)))
+            print 'Average segment area is %s.' %(str(seg_area(segments_slic,ss_raster)))
             segs = int(segs*1.5)
             print 'Trying segments %s...' %(str(segs),)
             im= read_raster(ss_raster)[0]
@@ -266,7 +274,7 @@ if __name__ == '__main__':
         fnames.append(oName)
         agg_dist.to_csv(oName,sep=',',index=False)
     
-        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, oName, agg_dist, ent_raster,var_raster,homo_raster,in_shp,s_df,g_df,r_df, im, segments_slic
+        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, oName, agg_dist, ent_raster,var_raster,homo_raster,in_shp,s_df,g_df,r_df, im, segments_slic,ent,var,homo
         
     #Merge GLCM distributions for plotting
     df1 = pd.read_csv(fnames[0],sep=',')  
