@@ -187,7 +187,36 @@ def seg_area(segments_slic,ss_raster):
     test[np.isnan(im)] = -99
     unique, counts = np.unique(test[test!=-99], return_counts=True)
     return np.average(counts)           
-       
+ 
+def get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames):        
+    #Get mini rasters
+    ent_stats = zonal_stats(in_shp, ent_raster, stats=['count','mean'], raster_out=True)
+    var_stats = zonal_stats(in_shp, var_raster, stats=['count','mean'], raster_out=True)
+    homo_stats = zonal_stats(in_shp, homo_raster, stats=['count','mean'], raster_out=True)
+    
+    #Aggregrate based on 
+    s_ent,  g_ent, r_ent, a = agg_distributions(ent_stats, in_shp,'Entropy')
+    s_var,  g_var, r_var = agg_distributions(var_stats, in_shp,'Variance')[0:3]
+    s_homo,  g_homo, r_homo = agg_distributions(homo_stats, in_shp,'Homogeneity')[0:3]
+    del ent_stats, var_stats, homo_stats
+    
+    s_df = pd.concat([s_ent,pd.concat([s_var,s_homo],axis=1)],axis=1)
+    g_df = pd.concat([g_ent,pd.concat([g_var,g_homo],axis=1)],axis=1)
+    r_df = pd.concat([r_ent,pd.concat([r_var,r_homo],axis=1)],axis=1)
+    del s_ent, g_ent, r_ent, s_var, g_var, r_var, s_homo, g_homo, r_homo
+    
+    s_df['sedclass'] = 1
+    g_df['sedclass'] = 2
+    r_df['sedclass'] = 3
+
+    agg_dist = pd.concat([s_df,pd.concat([g_df,r_df])])
+    oName = r"C:\workspace\GLCM\slic_output" + os.sep + k + "_aggregraded_distributions.csv"
+    fnames.append(oName)
+    agg_dist.to_csv(oName,sep=',',index=False)
+    return fnames     
+    
+    
+    
 if __name__ == '__main__':
     
     #Input sidescan rasters
@@ -213,7 +242,7 @@ if __name__ == '__main__':
                 'R01767':r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"}  
     fnames = []
     
-    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
+    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items())[2:3]:
         
         print 'Now calculating GLCM metrics for %s...' %(k,)
         ss_raster = v
@@ -227,8 +256,8 @@ if __name__ == '__main__':
         im = rescale(im,0,1)
         
         #initialize segments for iteration
-        segs = int(500)
-        segments_slic = slic(im, n_segments=500, compactness=.1,slic_zero=True)
+        segs = int(100)
+        segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
         
         while seg_area(segments_slic,ss_raster)>1000:
             print 'Average segment area is %s.' %(str(seg_area(segments_slic,ss_raster)))
@@ -249,32 +278,11 @@ if __name__ == '__main__':
         #Write GLCM rasters to file
         make_glcm_raster(ent,var,homo,v1,v2,v3)
         
-        #Get mini rasters
-        ent_stats = zonal_stats(in_shp, ent_raster, stats=['count','mean'], raster_out=True)
-        var_stats = zonal_stats(in_shp, var_raster, stats=['count','mean'], raster_out=True)
-        homo_stats = zonal_stats(in_shp, homo_raster, stats=['count','mean'], raster_out=True)
-        
-        #Aggregrate based on 
-        s_ent,  g_ent, r_ent, a = agg_distributions(ent_stats, in_shp,'Entropy')
-        s_var,  g_var, r_var = agg_distributions(var_stats, in_shp,'Variance')[0:3]
-        s_homo,  g_homo, r_homo = agg_distributions(homo_stats, in_shp,'Homogeneity')[0:3]
-        del ent_stats, var_stats, homo_stats
-        
-        s_df = pd.concat([s_ent,pd.concat([s_var,s_homo],axis=1)],axis=1)
-        g_df = pd.concat([g_ent,pd.concat([g_var,g_homo],axis=1)],axis=1)
-        r_df = pd.concat([r_ent,pd.concat([r_var,r_homo],axis=1)],axis=1)
-        del s_ent, g_ent, r_ent, s_var, g_var, r_var, s_homo, g_homo, r_homo
-        
-        s_df['sedclass'] = 1
-        g_df['sedclass'] = 2
-        r_df['sedclass'] = 3
-
-        agg_dist = pd.concat([s_df,pd.concat([g_df,r_df])])
-        oName = r"C:\workspace\GLCM\slic_output" + os.sep + k + "_aggregraded_distributions.csv"
-        fnames.append(oName)
-        agg_dist.to_csv(oName,sep=',',index=False)
+        #Aggregrate distributions and save to file
+        fnames = get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames)
+       
     
-        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, oName, agg_dist, ent_raster,var_raster,homo_raster,in_shp,s_df,g_df,r_df, im, segments_slic,ent,var,homo
+        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, ent_raster,var_raster,homo_raster,in_shp,im, segments_slic,ent,var,homo
         
     #Merge GLCM distributions for plotting
     df1 = pd.read_csv(fnames[0],sep=',')  
@@ -285,7 +293,48 @@ if __name__ == '__main__':
     del df1,df2,df3
     oName = r"C:\workspace\GLCM\slic_output" + os.sep + "merged_aggregraded_distributions.csv"
     merge_dist.to_csv(oName,sep=',',index=False)    
+    del fnames, merge_dist
     
-   
-    
+    #calculate zonal statisitcs and write to file
+    fnames = []
+    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
+        ss_raster = v
+        ent_raster = v1
+        var_raster = v2
+        homo_raster= v3
+        in_shp = v4
         
+        ds = ogr.Open(in_shp)
+        lyr = ds.GetLayer(0)
+        a=[]
+        for row in lyr:
+            a.append(row.substrate)
+        lyr.ResetReading()
+        del ds
+        
+        variable = 'entropy'
+        oName = r"C:\workspace\GLCM\slic_output" + os.sep  + k + "_" + variable + "_zonalstats.csv" 
+        ent_stats = zonal_stats(in_shp, ent_raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
+        df = pd.DataFrame(ent_stats)
+        df['substrate'] = a
+        df.to_csv(oName,sep=',',index=False)
+        fnames.append(oName)
+        
+        variable = 'variance'
+        oName = r"C:\workspace\GLCM\slic_output" + os.sep  + k + "_" + variable + "_zonalstats.csv" 
+        var_stats = zonal_stats(in_shp, var_raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
+        df = pd.DataFrame(var_stats)
+        df['substrate'] = a      
+        df.to_csv(oName,sep=',',index=False)
+        fnames.append(oName)
+        
+        variable = 'homogeneity'
+        oName = r"C:\workspace\GLCM\slic_output" + os.sep + k + "_" + variable + "_zonalstats.csv" 
+        homo_stats = zonal_stats(in_shp, homo_raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
+        df = pd.DataFrame(homo_stats)
+        df['substrate'] = a 
+        df.to_csv(oName,sep=',',index=False)
+        fnames.append(oName)
+        
+        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),ss_raster,ent_raster,var_raster,homo_raster,in_shp,a,df, oName, variable
+    
