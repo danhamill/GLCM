@@ -4,7 +4,7 @@ Created on Wed Jan 04 10:04:22 2017
 
 @author: dan
 """
-
+from scikits.bootstrap import bootstrap as boot
 from rasterstats import zonal_stats
 import pandas as pd
 from osgeo import osr, gdal,ogr
@@ -90,6 +90,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     Exports data to GTiff Raster
     '''
     std = np.squeeze(std)
+    std[std == 0] = -99
     std[np.isinf(std)] = -99
     driver = gdal.GetDriverByName(driverName)
     rows,cols = np.shape(std)
@@ -181,11 +182,20 @@ def plot_distributions(merge_dist):
     plt.show()
     plt.savefig(r'C:\workspace\GLCM\slic_output\GLCM_aggregrated_distributions.png',dpi=600)   
 
-def seg_area(segments_slic,ss_raster):
+def seg_area(segments_slic,ss_raster,k):
     im = read_raster(ss_raster)[0]
     test = segments_slic.copy()
     test[np.isnan(im)] = -99
     unique, counts = np.unique(test[test!=-99], return_counts=True)
+    df = pd.DataFrame({'unique':unique, 'counts':counts})
+    fig,ax = plt.subplots()
+    df.plot.bar(ax=ax,x=df['unique'],y='counts')
+    ax.set_ylabel('Cell Counts')
+    ax.set_xlabel('Unique slic segmentation label')
+    oName = r"C:\workspace\GLCM\slic_output\slic_segmentation_area" + os.sep + k + "_area_distributions.png"
+    plt.tight_layout()
+    plt.savefig(oName,dpi=600)
+    plt.close()
     return np.average(counts)           
  
 def get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames):        
@@ -215,6 +225,33 @@ def get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames):
     agg_dist.to_csv(oName,sep=',',index=False)
     return fnames     
     
+def merge_zonal_stats(fnames):
+    a = []
+    variable = 'entropy'
+    df1 = pd.read_csv(fnames[0],sep=',')
+    df2 = pd.read_csv(fnames[3],sep=',')
+    df3 = pd.read_csv(fnames[6],sep=',')
+    oName = r"C:\workspace\GLCM\slic_output" + os.sep + variable + "_zonal_stats_merged.csv"
+    merge= pd.concat([df1,df2,df3])
+    merge.to_csv(oName,sep=',',index=False)
+    a.append(oName)
+    variable = 'variance'
+    df1 = pd.read_csv(fnames[1],sep=',')
+    df2 = pd.read_csv(fnames[4],sep=',')
+    df3 = pd.read_csv(fnames[7],sep=',')
+    oName = r"C:\workspace\GLCM\slic_output" + os.sep + variable + "_zonal_stats_merged.csv"
+    merge= pd.concat([df1,df2,df3])
+    merge.to_csv(oName,sep=',',index=False)
+    a.append(oName)
+    variable = 'homogeneity'
+    df1 = pd.read_csv(fnames[2],sep=',')
+    df2 = pd.read_csv(fnames[5],sep=',')
+    df3 = pd.read_csv(fnames[8],sep=',')
+    oName = r"C:\workspace\GLCM\slic_output" + os.sep + variable + "_zonal_stats_merged.csv"
+    merge= pd.concat([df1,df2,df3])
+    merge.to_csv(oName,sep=',',index=False)    
+    a.append(oName)
+    return a
     
     
 if __name__ == '__main__':
@@ -242,7 +279,10 @@ if __name__ == '__main__':
                 'R01767':r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"}  
     fnames = []
     
-    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items())[2:3]:
+    iter_start = [int(1687),int(1125), int(100)]
+    n = 0
+    #Create GLCM rasters, aggregrate distributions
+    for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
         
         print 'Now calculating GLCM metrics for %s...' %(k,)
         ss_raster = v
@@ -256,19 +296,25 @@ if __name__ == '__main__':
         im = rescale(im,0,1)
         
         #initialize segments for iteration
-        segs = int(100)
+        segs = int(iter_start[n])
         segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
         
-        while seg_area(segments_slic,ss_raster)>1000:
-            print 'Average segment area is %s.' %(str(seg_area(segments_slic,ss_raster)))
+        while seg_area(segments_slic,ss_raster,k)>1000:
+            print 'Average segment area is %s.' %(str(seg_area(segments_slic,ss_raster,k)))
             segs = int(segs*1.5)
             print 'Trying segments %s...' %(str(segs),)
             im= read_raster(ss_raster)[0]
             im[np.isnan(im)] = 0
             im = rescale(im,0,1)
             segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
-            
-        plt.imshow(mark_boundaries(im, segments_slic,color=[1,0,0]))    
+        
+        fig,ax = plt.subplots()
+        ax.imshow(mark_boundaries(im, segments_slic,color=[1,0,0])) 
+        title = k + ' n_segments = %s' %(str(segs),)
+        ax.set_title(title)
+        plt.tight_layout()
+        plt.savefig(r"C:\workspace\GLCM\slic_output" + os.sep + k + "_slic_segmentations.png",dpi=600)
+        plt.close()
         
         im = read_raster(ss_raster)[0]
         #Calculate GLCM metrics for slic segments
@@ -281,9 +327,9 @@ if __name__ == '__main__':
         #Aggregrate distributions and save to file
         fnames = get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames)
        
-    
-        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, ent_raster,var_raster,homo_raster,in_shp,im, segments_slic,ent,var,homo
-        
+        n += 1
+        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, ent_raster,var_raster,homo_raster,in_shp,im, segments_slic,ent,var,homo,gt,segs,title
+    del n    
     #Merge GLCM distributions for plotting
     df1 = pd.read_csv(fnames[0],sep=',')  
     df2 = pd.read_csv(fnames[1],sep=',')  
@@ -293,6 +339,7 @@ if __name__ == '__main__':
     del df1,df2,df3
     oName = r"C:\workspace\GLCM\slic_output" + os.sep + "merged_aggregraded_distributions.csv"
     merge_dist.to_csv(oName,sep=',',index=False)    
+    plot_distributions(merge_dist)
     del fnames, merge_dist
     
     #calculate zonal statisitcs and write to file
@@ -337,4 +384,43 @@ if __name__ == '__main__':
         fnames.append(oName)
         
         del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),ss_raster,ent_raster,var_raster,homo_raster,in_shp,a,df, oName, variable
+    
+    #merge zonal stats csv files
+    fnames = merge_zonal_stats(fnames)
+    
+    #Begin of lsq classifications
+    df1 = pd.read_csv(fnames[2],sep=',')
+    df2 = pd.read_csv(fnames[0],sep=',')
+    df3 = pd.read_csv(fnames[1],sep=',')
+    del fnames
+    df1.rename(columns={'max':'homo_max', 'mean':'homo_mean', 'median':'homo_median','min':'homo_min','percentile_25':'homo_25','percentile_50':'homo_50', 'percentile_75':'homo_75','std':'homo_std'},inplace=True)   
+    df2.rename(columns={'max':'entropy_max', 'mean':'entropy_mean', 'median':'entropy_median','min':'entropy_min','percentile_25':'entropy_25','percentile_50':'entropy_50', 'percentile_75':'entropy_75','std':'entropy_std'},inplace=True)   
+    df3.rename(columns={'max':'var_max', 'mean':'var_mean', 'median':'var_median','min':'var_min','percentile_25':'var_25','percentile_50':'var_50', 'percentile_75':'var_75','std':'var_std'},inplace=True)   
+    
+    
+    merge =df1.merge(df2,left_index=True, right_index=True, how='left')
+    merge = merge.merge(df3,left_index=True, right_index=True, how='left' )
+    merge = merge[['homo_median','entropy_median','var_median','substrate']].dropna()
+    merge.rename(columns={'substrate_x':'substrate'},inplace=True)
+    del df1,df2,df3
+    grouped = merge.groupby('substrate')
+    sand = grouped.get_group('sand')
+    gravel = grouped.get_group('gravel')
+    boulders = grouped.get_group('boulders')
+    del merge
+    
+    calib_df = pd.DataFrame(columns=['ent','homo','var'], index=['sand','gravel','boulders'])
+
+    calib_df.loc['sand'] = pd.Series({'homo':1- np.average(boot.ci(sand['homo_median'],np.median,alpha=0.05)) ,
+                                    'ent':np.average(boot.ci(sand['entropy_median'],np.median,alpha=0.05)) ,
+                                    'var': np.average(boot.ci(sand['var_median'],np.median,alpha=0.05))})
+    calib_df.loc['gravel'] = pd.Series({'homo':1- np.average(boot.ci(gravel['homo_median'],np.median,alpha=0.05)) ,
+                                    'ent':np.average(boot.ci(gravel['entropy_median'],np.median,alpha=0.05)) ,
+                                    'var': np.average(boot.ci(gravel['var_median'],np.median,alpha=0.05))})
+    calib_df.loc['boulders'] = pd.Series({'homo':1- np.average(boot.ci(boulders['homo_median'],np.median,alpha=0.05)) ,
+                                    'ent':np.average(boot.ci(boulders['entropy_median'],np.median,alpha=0.05)) ,
+                                    'var': np.average(boot.ci(boulders['var_median'],np.median,alpha=0.05))})
+    
+    del sand, gravel, boulders
+    
     
