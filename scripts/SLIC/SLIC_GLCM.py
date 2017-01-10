@@ -548,9 +548,9 @@ if __name__ == '__main__':
     try:
         fnames
     except:
-        fnames = [r"C:\workspace\GLCM\slic_output\homogeneity_zonal_stats_merged.csv",
-                  r"C:\workspace\GLCM\slic_output\entropy_zonal_stats_merged.csv",                 
-                  r"C:\workspace\GLCM\slic_output\variance_zonal_stats_merged.csv"]
+        fnames = [r"C:\workspace\GLCM\slic_output\entropy_zonal_stats_merged.csv",                 
+                  r"C:\workspace\GLCM\slic_output\variance_zonal_stats_merged.csv",
+                  r"C:\workspace\GLCM\slic_output\homogeneity_zonal_stats_merged.csv"]
 
     
     #Begin of lsq classifications
@@ -589,7 +589,7 @@ if __name__ == '__main__':
     del sand, gravel, boulders
     
     fnames = []
-    for (k,v), (k1,v1), (k2,v2) in zip(ent_dict.items(),var_dict.items(), homo_dict.items()):
+    for (k,v), (k1,v1), (k2,v2) in zip(ent_dict.items(),var_dict.items(), homo_dict.items())[0:1]:
         print 'Now making %s LSQ classificatons...' %(k,)
         ent_raster = v
         var_raster = v1
@@ -615,7 +615,8 @@ if __name__ == '__main__':
         
         vec1[np.isnan(vec1)] = 0; vec2[np.isnan(vec2)] = 0; vec3[np.isnan(vec3)] = 0
         vec1[np.isinf(vec1)] = 0; vec2[np.isinf(vec2)] = 0; vec3[np.isinf(vec3)] = 0
-        ind = np.nonzero(vec1)[0]
+        unique, ind = np.unique(vec1,return_index=True)
+        #ind = np.nonzero(vec1)[0]
         # =============== 
         # classify!
         # pre-allocate arrays
@@ -626,8 +627,8 @@ if __name__ == '__main__':
         
         
         # classify 
-        for k in xrange(len(ind)):
-              prc_sand[ind[k]], prc_gravel[ind[k]], prc_rock[ind[k]], ss_resid[ind[k]] = get_class(calib.T,(vec1[ind[k]],vec2[ind[k]],vec3[ind[k]]),w)
+        for k in xrange(len(ind[1:])):
+              prc_sand[vec1==unique[k]], prc_gravel[vec1==unique[k]], prc_rock[vec1==unique[k]], ss_resid[vec1==unique[k]] = get_class(calib.T,(vec1[ind[k]],vec2[ind[k]],vec3[ind[k]]),w)
         
         # now reshape the arrays
         
