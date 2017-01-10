@@ -14,6 +14,7 @@ from skimage.feature import greycomatrix, greycoprops
 from skimage.segmentation import slic, mark_boundaries
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+import pytablewriter
 
 def entropy_calc(glcm):
     horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
@@ -589,7 +590,7 @@ if __name__ == '__main__':
     del sand, gravel, boulders
     
     fnames = []
-    for (k,v), (k1,v1), (k2,v2) in zip(ent_dict.items(),var_dict.items(), homo_dict.items())[0:1]:
+    for (k,v), (k1,v1), (k2,v2) in zip(ent_dict.items(),var_dict.items(), homo_dict.items()):
         print 'Now making %s LSQ classificatons...' %(k,)
         ent_raster = v
         var_raster = v1
@@ -650,6 +651,7 @@ if __name__ == '__main__':
         sed_df = sed_df[['prc_sand','sand_conf','prc_gravel','gravel_conf','prc_rock','rock_conf']]
         
         sed_df['sedclass'] = sed_df.apply(lambda row: make_class(row),axis=1)
+
         
         sed_class = np.reshape(np.asarray(sed_df['sedclass'],dtype='float'),np.shape(sand_conf))
         
@@ -657,3 +659,37 @@ if __name__ == '__main__':
 
         del k, k1, k2, v1, v, v2, sed_class, sed_df, sand_conf, rock_conf, gravel_conf,prc_sand,prc_gravel,prc_rock,ss_resid,vec1,vec2,vec3
         del outFile,homo_data,var_data,ent_data,ind,gt,Nx,Ny,ent_raster,homo_raster,var_raster
+        
+    #convert fnames to dict for classification results
+    lsq_dict = {'R01346':fnames[1],'R01765':fnames[2],'R01767':fnames[0]}
+    n=0
+    for (k,v), (k1,v1)in zip(lsq_dict.items(),shp_dict.items()):
+        raster = v
+        shp = v1
+        subs = get_subs(shp)
+        stats = zonal_stats(shp, raster, categorical=True, nodata=-99)
+        if n == 0:
+            merge_subs = subs
+            merge_df = pd.DataFrame(stats)
+        else:
+            merge_subs.extend(subs)
+            merge_df = pd.concat([merge_df,pd.DataFrame(stats)])
+        del stats, shp,raster,subs
+        n += 1
+    del n
+    
+    merge_df['substrate'] = merge_subs
+    
+    merge_df.rename(columns = {0.0:'null',1.0:'Sand',2.0:'Gravel',3.0:'Boulders'},inplace=True)
+    merge_df = merge_df[['null','Sand','Gravel','Boulders','substrate']]
+    
+    pvt = pd.pivot_table(merge_df, index=['substrate'],values=['null','Sand','Gravel','Boulders'],aggfunc=np.nansum)
+    del merge_df
+    #Percentage classification table
+    class_df = pvt.div(pvt.sum(axis=1), axis=0)
+
+    writer = pytablewriter.MarkdownTableWriter()
+    writer.table_name = "Non-negative Least Squares Classification Results"
+    writer.header_list = list(class_df.columns.values)
+    writer.value_matrix = class_df.values.tolist()
+    writer.write_table()       
