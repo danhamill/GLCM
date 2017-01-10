@@ -136,6 +136,7 @@ def lsq_CreateRaster(sed_class,gt,outFile):
 def make_glcm_raster(ent,var,homo,v1,v2,v3):
     proj = osr.SpatialReference()
     proj.ImportFromEPSG(26949)
+    ent[ent>15]= np.nan
     CreateRaster(xx,yy,ent,gt,proj,'GTiff',v1)
     CreateRaster(xx,yy,var,gt,proj,'GTiff',v2)
     CreateRaster(xx,yy,homo,gt,proj,'GTiff',v3)
@@ -441,7 +442,7 @@ if __name__ == '__main__':
     #Create GLCM rasters, aggregrate distributions
     for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
         
-        print 'Now calculating GLCM metrics for %s...' %(k,)
+        
         ss_raster = v
         ent_raster = v1
         var_raster = v2
@@ -453,6 +454,7 @@ if __name__ == '__main__':
         im = rescale(im,0,1)
         
         #initialize segments for iteration
+        print 'Now calculating n segmentss for slic segments for %s...' %(k,)
         segs = int(iter_start[n])
         segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
         
@@ -474,6 +476,7 @@ if __name__ == '__main__':
         plt.close()
         
         im = read_raster(ss_raster)[0]
+        print 'Now calculating GLCM metrics for %s...' %(k,)
         #Calculate GLCM metrics for slic segments
         ent,var,homo = glcm_calc(read_raster(ss_raster)[0],segments_slic)
         
@@ -481,6 +484,7 @@ if __name__ == '__main__':
         #Write GLCM rasters to file
         make_glcm_raster(ent,var,homo,v1,v2,v3)
         
+        print 'Aggregrating Distributions...'
         #Aggregrate distributions and save to file
         fnames = get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames)
        
@@ -500,6 +504,7 @@ if __name__ == '__main__':
     plot_distributions(merge_dist)
     del fnames, merge_dist
     
+    print 'Calculating zonal statistics for GLCM rasters...'
     #calculate zonal statisitcs and write to file
     fnames = []
     for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
@@ -575,6 +580,7 @@ if __name__ == '__main__':
     boulders = grouped.get_group('boulders')
     del merge
     
+    print 'Calculating calibrations metrics for lsq classifications...'
     calib_df = pd.DataFrame(columns=['ent','homo','var'], index=['sand','gravel','boulders'])
 
     calib_df.loc['sand'] = pd.Series({'homo':1- np.average(boot.ci(sand['homo_median'],np.median,alpha=0.05)) ,
@@ -658,7 +664,7 @@ if __name__ == '__main__':
         lsq_CreateRaster(sed_class,gt,outFile)
 
         del k, k1, k2, v1, v, v2, sed_class, sed_df, sand_conf, rock_conf, gravel_conf,prc_sand,prc_gravel,prc_rock,ss_resid,vec1,vec2,vec3
-        del outFile,homo_data,var_data,ent_data,ind,gt,Nx,Ny,ent_raster,homo_raster,var_raster
+        del outFile,homo_data,var_data,ent_data,ind,gt,Nx,Ny,ent_raster,homo_raster,var_raster,unique
         
     #convert fnames to dict for classification results
     lsq_dict = {'R01346':fnames[1],'R01765':fnames[2],'R01767':fnames[0]}
@@ -674,7 +680,7 @@ if __name__ == '__main__':
         else:
             merge_subs.extend(subs)
             merge_df = pd.concat([merge_df,pd.DataFrame(stats)])
-        del stats, shp,raster,subs
+        del stats, shp,raster,subs,(k,v), (k1,v1)
         n += 1
     del n
     
@@ -692,4 +698,10 @@ if __name__ == '__main__':
     writer.table_name = "Non-negative Least Squares Classification Results"
     writer.header_list = list(class_df.columns.values)
     writer.value_matrix = class_df.values.tolist()
-    writer.write_table()       
+    writer.write_table()
+    
+    writer = pytablewriter.MarkdownTableWriter()
+    writer.table_name = "Calibration Dataframe"
+    writer.header_list = list(calib_df.reset_index().columns.values)
+    writer.value_matrix = calib_df.reset_index().values.tolist()
+    writer.write_table()   
