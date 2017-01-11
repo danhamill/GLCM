@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import pytablewriter
 
 def entropy_calc(glcm):
-    with np.seterr(divide='ignore', invalid='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
         horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
         return horizontal_entropy
