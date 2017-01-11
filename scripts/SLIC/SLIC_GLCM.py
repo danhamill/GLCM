@@ -17,9 +17,10 @@ import matplotlib.pyplot as plt
 import pytablewriter
 
 def entropy_calc(glcm):
-    horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
-    horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
-    return horizontal_entropy
+    with np.seterr(divide='ignore', invalid='ignore'):
+        horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
+        horizontal_entropy = np.asarray([[horizontal_entropy[0,0]]])
+        return horizontal_entropy
  
 def mean_var(P):
     (num_level, num_level2, num_dist, num_angle) = P.shape
@@ -61,6 +62,7 @@ def glcm_calc(im,segments_slic):
            homo[segments_slic == k] = 0
     
     #mask out no data portions of the input image   
+    ent[ent>15]= np.nan
     ent[np.isnan(m)] = np.nan  
     var[np.isnan(m)] = np.nan  
     homo[np.isnan(m)] = np.nan  
@@ -100,6 +102,7 @@ def CreateRaster(xx,yy,std,gt,proj,driverName,outFile):
     std = np.squeeze(std)
     std[std == 0] = -99
     std[np.isinf(std)] = -99
+    std[np.isnan(std)] = -99
     driver = gdal.GetDriverByName(driverName)
     rows,cols = np.shape(std)
     ds = driver.Create( outFile, cols, rows, 1, gdal.GDT_Float32)      
@@ -136,7 +139,7 @@ def lsq_CreateRaster(sed_class,gt,outFile):
 def make_glcm_raster(ent,var,homo,v1,v2,v3):
     proj = osr.SpatialReference()
     proj.ImportFromEPSG(26949)
-    ent[ent>15]= np.nan
+    
     CreateRaster(xx,yy,ent,gt,proj,'GTiff',v1)
     CreateRaster(xx,yy,var,gt,proj,'GTiff',v2)
     CreateRaster(xx,yy,homo,gt,proj,'GTiff',v3)
@@ -204,6 +207,7 @@ def plot_distributions(merge_dist):
     plt.tight_layout()
     plt.show()
     plt.savefig(r'C:\workspace\GLCM\slic_output\GLCM_aggregrated_distributions.png',dpi=600)   
+    plt.close()
 
 def seg_area(segments_slic,ss_raster,k):
     im = read_raster(ss_raster)[0]
@@ -437,7 +441,7 @@ if __name__ == '__main__':
                 'R01767':r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"}  
     fnames = []
     
-    iter_start = [int(1687),int(1125), int(100)]
+    iter_start = [int(2530),int(1687), int(225)]
     n = 0
     #Create GLCM rasters, aggregrate distributions
     for (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4) in zip(ss_dict.items(),ent_dict.items(),var_dict.items(), homo_dict.items(),shp_dict.items()):
