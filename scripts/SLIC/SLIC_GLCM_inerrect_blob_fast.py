@@ -11,11 +11,14 @@ from osgeo import osr, gdal,ogr
 import numpy as np
 import os
 from skimage.feature import greycomatrix, greycoprops
-from skimage.segmentation import slic, mark_boundaries
+from skimage.segmentation import slic
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import pytablewriter
+from joblib import Parallel, delayed, cpu_count
 
+
+####################################################################################################################
 def entropy_calc(glcm):
     with np.errstate(divide='ignore', invalid='ignore'):
         horizontal_entropy = np.apply_over_axes(np.nansum,(np.log(glcm)*-1*glcm),axes=(0,1))[0,0]
@@ -30,6 +33,52 @@ def mean_var(P):
     var_h = np.apply_over_axes(np.sum, (P * (diff_i) ** 2), axes=(0, 1))[0, 0]
     return var_h 
 
+def crop_toseg(mask, im):
+    true_points = np.argwhere(mask)
+    top_left = true_points.min(axis=0)
+    # take the largest points and use them as the bottom right of your crop
+    bottom_right = true_points.max(axis=0)
+    cmask = mask[top_left[0]:bottom_right[0]+1, top_left[1]:bottom_right[1]+1]
+    cmask = cmask.astype(bool)
+    nrows, ncols = np.shape(cmask)
+    
+    maxarea = (0, [])
+    
+    arr = np.asarray(cmask, dtype='int')
+    wid = np.zeros(dtype=int, shape=arr.shape)
+    hght = np.zeros(dtype=int, shape=arr.shape)
+    
+    for row in xrange(nrows):
+        for col in xrange(ncols):
+            if arr[row][col] == 0:
+                continue
+    
+            if row == 0:
+                hght[row][col] = 0
+            else:
+                hght[row][col] = hght[row-1][col]+1
+    
+            if col == 0:
+                wid[row][col] = 0
+            else:
+                wid[row][col] = wid[row][col-1]+1
+            min_w = wid[row][col]
+    
+            for delta_hght in xrange(hght[row][col]):
+                min_w = np.min([min_w, wid[row-delta_hght][col]])
+                areanow = (delta_hght+1)*min_w
+                if areanow > maxarea[0]:
+                    maxarea = (areanow, [(row-delta_hght, col-min_w+1, row, col)])
+    
+    t = np.squeeze(maxarea[1])
+    
+    min_row = t[0]; max_row = t[2]
+    min_col = t[1]; max_col = t[3]
+         
+    cim = im[min_row:max_row, min_col:max_col]
+       
+    return cmask,cim 
+    
 def glcm_calc(im,segments_slic):
     m = im.copy()
     im[np.isnan(im)] = 0
@@ -37,29 +86,36 @@ def glcm_calc(im,segments_slic):
     ent = np.zeros(im.shape[:2], dtype = "float64")
     var = np.zeros(im.shape[:2], dtype = "float64")
     homo = np.zeros(im.shape[:2], dtype = "float64")
+    
+    
+    w = Parallel(n_jobs = cpu_count()-1, verbose=0)(delayed(p_me)(im,ent,var,homo) for k in np.unique(segments_slic))
+    ent = [a[0] for a in w]
+    var =[a[1] for a in w]
+    homo = [a[2] for a in w]
+    
+#    for k in np.unique(segments_slic):
+#        mask = np.zeros(im.shape[:2], dtype = "uint8")
+#        mask[segments_slic == k] = 255
+#        cmask, cim = crop_toseg(mask, im)
+#        count = np.count_nonzero(mask)
+#        im_count =  np.count_nonzero(im[segments_slic == k])
+#        
+#        #Attempt to weed out no data super pixels
+#        if im_count > 0.75*count:
+#    
+#            # compute GLCM using 3 distances over 4 angles
+#            glcm = greycomatrix(cim, [5], [0], 256, symmetric=True, normed=True)
+#    
+#            #populate masks for 4 glcm variables
+#            ent[segments_slic == k] = entropy_calc(glcm)[0, 0]
+#            var[segments_slic == k] = mean_var(glcm)[0,0]
+#            homo[segments_slic == k] = greycoprops(glcm, 'homogeneity')[0, 0]
+#        else:
+#           #populate masks for 4 glcm variables
+#            ent[segments_slic == k] = 0
+#            var[segments_slic == k] = 0
+#            homo[segments_slic == k] = 0
 
-    for k in np.unique(segments_slic):
-       mask = np.zeros(im.shape[:2], dtype = "uint8")
-       mask[segments_slic == k] = 255
-       count = np.count_nonzero(mask)
-       im_count =  np.count_nonzero(im[segments_slic == k])
-       
-       #Check to make sure GLCM calculations are only made for segments with data
-       if im_count > 0.75*count:
-           cmask, cim = crop_toseg(mask, im)
-    
-           # compute GLCM using 3 distances over 4 angles
-           glcm = greycomatrix(cim, [5], [0], 256, symmetric=True, normed=True)
-    
-           #populate masks for 4 glcm variables
-           ent[segments_slic == k] = entropy_calc(glcm)[0, 0]
-           var[segments_slic == k] = mean_var(glcm)[0,0]
-           homo[segments_slic == k] = greycoprops(glcm, 'homogeneity')[0, 0]
-       else:
-          #populate masks for 4 glcm variables
-           ent[segments_slic == k] = 0
-           var[segments_slic == k] = 0
-           homo[segments_slic == k] = 0
     
     #mask out no data portions of the input image   
     ent[ent>15]= np.nan
@@ -67,6 +123,35 @@ def glcm_calc(im,segments_slic):
     var[np.isnan(m)] = np.nan  
     homo[np.isnan(m)] = np.nan  
     return (ent, var, homo)
+
+    
+def p_me(im,ent,var,homo):
+    
+    mask = np.zeros(im.shape[:2], dtype = "uint8")
+    mask[segments_slic == k] = 255
+    cmask, cim = crop_toseg(mask, im)
+    count = np.count_nonzero(mask)
+    im_count =  np.count_nonzero(im[segments_slic == k])
+    
+    #Attempt to weed out no data super pixels
+    if im_count > 0.75*count:
+
+        # compute GLCM using 3 distances over 4 angles
+        glcm = greycomatrix(cim, [5], [0], 256, symmetric=True, normed=True)
+
+        #populate masks for 4 glcm variables
+        ent[segments_slic == k] = entropy_calc(glcm)[0, 0]
+        var[segments_slic == k] = mean_var(glcm)[0,0]
+        homo[segments_slic == k] = greycoprops(glcm, 'homogeneity')[0, 0]
+    else:
+       #populate masks for 4 glcm variables
+        ent[segments_slic == k] = 0
+        var[segments_slic == k] = 0
+        homo[segments_slic == k] = 0
+        
+    return (ent,var,homo)
+    
+####################################################################################################################
     
 def read_raster(in_raster):
     in_raster=in_raster
@@ -144,7 +229,9 @@ def make_glcm_raster(ent,var,homo,v1,v2,v3):
     CreateRaster(xx,yy,var,gt,proj,'GTiff',v2)
     CreateRaster(xx,yy,homo,gt,proj,'GTiff',v3)
         
-    
+####################################################################################################################
+
+   
 def agg_distributions(stats,in_shp,metric):
     #Lets get get the substrate to sort lists
     a = get_subs(in_shp)
@@ -181,14 +268,9 @@ def rescale(dat,mn,mx):
    M = np.max(dat.flatten())
    return (mx-mn)*(dat-m)/(M-m)+mn
 
-def crop_toseg(mask, im):
-   true_points = np.argwhere(mask)
-   top_left = true_points.min(axis=0)
-   # take the largest points and use them as the bottom right of your crop
-   bottom_right = true_points.max(axis=0)
-   return mask[top_left[0]:bottom_right[0]+1, top_left[1]:bottom_right[1]+1], im[top_left[0]:bottom_right[0]+1, top_left[1]:bottom_right[1]+1]  
 
-def plot_distributions(merge_dist):
+    
+def plot_distributions(merge_dist,iter_start):
     #legend stuff
     blue = mpatches.Patch(color='blue',label='Sand')
     green = mpatches.Patch(color='green',label='Gravel')
@@ -205,8 +287,11 @@ def plot_distributions(merge_dist):
     ax2.set_xlabel('GLCM Variance')
     ax2.legend(loc=9,handles=[blue,green,red],ncol=3,columnspacing=1, fontsize=8)
     plt.tight_layout()
+    title = str(iter_start) + ' Merged Distributions'
+    plt.suptitle(title)
     plt.show()
-    plt.savefig(r'C:\workspace\GLCM\slic_output\GLCM_aggregrated_distributions.png',dpi=600)   
+    oName = root + os.sep + 'GLCM_aggregrated_distributions.png'
+    plt.savefig(oName,dpi=600)   
     plt.close()
 
 
@@ -232,18 +317,18 @@ def get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames):
     r_df['sedclass'] = 3
 
     agg_dist = pd.concat([s_df,pd.concat([g_df,r_df])])
-    oName = r"C:\workspace\GLCM\slic_output" + os.sep + k + "_aggregraded_distributions.csv"
+    oName = root + os.sep + k + "_aggregraded_distributions.csv"
     fnames.append(oName)
     agg_dist.to_csv(oName,sep=',',index=False)
     return fnames     
     
-def merge_zonal_stats(fnames):
+def merge_zonal_stats(fnames, root):
     a = []
     variable = 'entropy'
     df1 = pd.read_csv(fnames[0],sep=',')
     df2 = pd.read_csv(fnames[3],sep=',')
     df3 = pd.read_csv(fnames[6],sep=',')
-    oName = r"C:\workspace\GLCM\slic_output" + os.sep + variable + "_zonal_stats_merged.csv"
+    oName = root + os.sep + variable + "_zonal_stats_merged.csv"
     merge= pd.concat([df1,df2,df3])
     merge.to_csv(oName,sep=',',index=False)
     a.append(oName)
@@ -251,7 +336,7 @@ def merge_zonal_stats(fnames):
     df1 = pd.read_csv(fnames[1],sep=',')
     df2 = pd.read_csv(fnames[4],sep=',')
     df3 = pd.read_csv(fnames[7],sep=',')
-    oName = r"C:\workspace\GLCM\slic_output" + os.sep + variable + "_zonal_stats_merged.csv"
+    oName = root + os.sep + variable + "_zonal_stats_merged.csv"
     merge= pd.concat([df1,df2,df3])
     merge.to_csv(oName,sep=',',index=False)
     a.append(oName)
@@ -259,7 +344,7 @@ def merge_zonal_stats(fnames):
     df1 = pd.read_csv(fnames[2],sep=',')
     df2 = pd.read_csv(fnames[5],sep=',')
     df3 = pd.read_csv(fnames[8],sep=',')
-    oName = r"C:\workspace\GLCM\slic_output" + os.sep + variable + "_zonal_stats_merged.csv"
+    oName = root + os.sep + variable + "_zonal_stats_merged.csv"
     merge= pd.concat([df1,df2,df3])
     merge.to_csv(oName,sep=',',index=False)    
     a.append(oName)
@@ -408,7 +493,7 @@ def seg_area(segments_slic,ss_raster,k):
     unique, counts = np.unique(test[~np.isnan(im)], return_counts=True)
     return np.average(counts)           
  
-def plot_area(segments_slic,ss_raster,k):
+def plot_area(segments_slic,ss_raster,k,root):
     im = read_raster(ss_raster)[0]
     test = segments_slic.copy()
     test[np.isnan(im)] = -99
@@ -418,12 +503,24 @@ def plot_area(segments_slic,ss_raster,k):
     df.plot.bar(ax=ax,x=df['unique'],y='counts')
     ax.set_ylabel('Cell Counts')
     ax.set_xlabel('Unique slic segmentation label')
-    oName = r"C:\workspace\GLCM\slic_output\slic_segmentation_area" + os.sep + k + "_area_distributions.png"
+    oName = root + os.sep + "slic_segmentation_area" + os.sep + k + "_area_distributions.png"
     plt.tight_layout()
     plt.savefig(oName,dpi=600)
     plt.close()
         
 if __name__ == '__main__':
+    
+    root = r'C:\workspace\GLCM\slic_output\blob'
+    
+    #set up new directory
+    if not os.path.exists(root + os.sep + 'slic_glcm_rasters'):
+        os.mkdir(root + os.sep + 'slic_glcm_rasters')
+        os.mkdir(root + os.sep + 'slic_glcm_rasters' + os.sep + '2014_04')
+        os.mkdir(root + os.sep + 'slic_glcm_rasters' + os.sep + '2014_09')
+        os.mkdir(root + os.sep + 'slic_lsq_rasters' )
+        os.mkdir(root + os.sep + 'slic_segmentation_area')
+        
+        
     
     #Input sidescan rasters
     ss_dict = {'R01346':r"C:\workspace\Merged_SS\window_analysis\10_percent_shift\raster\ss_50_rasterclipped.tif",
@@ -431,24 +528,24 @@ if __name__ == '__main__':
                 'R01767':r"C:\workspace\Merged_SS\raster\2014_09\ss_2014_09_R01767_raster.tif"}
                              
     #Output Rasters
-    ent_dict = {'R01346':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_04\R01346_R01347_slic_entropy.tif",
-                'R01765':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_09\R01765_slic_entropy.tif",
-                'R01767':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_09\R01767_slic_entropy.tif"}
+    ent_dict = {'R01346':root + os.sep + r"slic_glcm_rasters\2014_04\R01346_R01347_slic_entropy.tif",
+                'R01765':root + os.sep + r"slic_glcm_rasters\2014_09\R01765_slic_entropy.tif",
+                'R01767':root + os.sep + r"slic_glcm_rasters\2014_09\R01767_slic_entropy.tif"}
                 
-    var_dict = {'R01346':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_04\R01346_R01347_slic_var.tif",
-                'R01765':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_09\R01765_3_slic_var.tif",
-                'R01767':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_09\R01767_3_slic_var.tif"}       
+    var_dict = {'R01346':root + os.sep + r"slic_glcm_rasters\2014_04\R01346_R01347_slic_var.tif",
+                'R01765':root + os.sep + r"slic_glcm_rasters\2014_09\R01765_3_slic_var.tif",
+                'R01767':root + os.sep + r"slic_glcm_rasters\2014_09\R01767_3_slic_var.tif"}       
     
-    homo_dict = {'R01346':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_04\R01346_R01347_slic_homo.tif",
-                 'R01765':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_09\R01765_slic_homo.tif",
-                 'R01767':r"C:\workspace\GLCM\slic_output\slic_glcm_rasters\2014_09\R01767_slic_homo.tif"}  
+    homo_dict = {'R01346':root + os.sep + r"slic_glcm_rasters\2014_04\R01346_R01347_slic_homo.tif",
+                 'R01765':root + os.sep + r"slic_glcm_rasters\2014_09\R01765_slic_homo.tif",
+                 'R01767':root + os.sep + r"slic_glcm_rasters\2014_09\R01767_slic_homo.tif"}  
     
     shp_dict = {'R01346':r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_800_3class.shp",
                 'R01765':r"C:\workspace\Merged_SS\window_analysis\shapefiles\R01765.shp",
                 'R01767':r"C:\workspace\Merged_SS\window_analysis\shapefiles\tex_seg_2014_09_67_3class.shp"}  
     fnames = []
     
-    iter_start = [int(2530),int(1687), int(225)]
+    iter_start = [int(900),int(900), int(200)]
     fig_sizes = [(5,6),(4,8),(4,8)]
     n = 0
     #Create GLCM rasters, aggregrate distributions
@@ -466,31 +563,15 @@ if __name__ == '__main__':
         im = rescale(im,0,1)
         
         #initialize segments for iteration
-        print 'Now calculating n segmentss for slic segments for %s...' %(k,)
+        print 'Now calculating n_segments for slic segments for %s...' %(k,)
         segs = int(iter_start[n])
         segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
         
-#        while seg_area(segments_slic,ss_raster,k)>1000:
-#            print 'Average segment area is %s.' %(str(seg_area(segments_slic,ss_raster,k)))
-#            segs = int(segs*1.5)
-#            print 'Trying segments %s...' %(str(segs),)
-#            im= read_raster(ss_raster)[0]
-#            im[np.isnan(im)] = 0
-#            im = rescale(im,0,1)
-#            segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
-        
-        fig,ax = plt.subplots(figsize=fig_sizes[n])
-        ax.imshow(mark_boundaries(im, segments_slic,color=[1,0,0])) 
-        title = k + ' n_segments = %s' %(str(segs),)
-        ax.set_title(title)
-        plt.tight_layout()
-        plt.savefig(r"C:\workspace\GLCM\slic_output" + os.sep + k + "_slic_segmentations.png",dpi=1000)
-        plt.close()
         
         im = read_raster(ss_raster)[0]
         print 'Now calculating GLCM metrics for %s...' %(k,)
         #Calculate GLCM metrics for slic segments
-        ent,var,homo = glcm_calc(read_raster(ss_raster)[0],segments_slic)
+        ent,var,homo = glcm_calc(im,segments_slic)
         
         print 'Now making rasters...'
         #Write GLCM rasters to file
@@ -501,7 +582,7 @@ if __name__ == '__main__':
         fnames = get_zstats(ent_raster,var_raster,homo_raster,in_shp,fnames)
        
         n += 1
-        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, ent_raster,var_raster,homo_raster,in_shp,im, segments_slic,ent,var,homo,gt,segs,title
+        del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),xx,yy, ent_raster,var_raster,homo_raster,in_shp,im, segments_slic,ent,var,homo,gt,segs
     del n    
 
     #Merge GLCM distributions for plotting
@@ -511,10 +592,10 @@ if __name__ == '__main__':
     
     merge_dist = pd.concat([df1,pd.concat([df2,df3])])
     del df1,df2,df3
-    oName = r"C:\workspace\GLCM\slic_output" + os.sep + "merged_aggregraded_distributions.csv"
+    oName = root + os.sep + "merged_aggregraded_distributions.csv"
     merge_dist.to_csv(oName,sep=',',index=False)    
-    plot_distributions(merge_dist)
-    del fnames, merge_dist
+    plot_distributions(merge_dist,iter_start)
+    del fnames, merge_dist,iter_start
     
     print 'Calculating zonal statistics for GLCM rasters...'
     #calculate zonal statisitcs and write to file
@@ -535,7 +616,7 @@ if __name__ == '__main__':
         del ds
         
         variable = 'entropy'
-        oName = r"C:\workspace\GLCM\slic_output" + os.sep  + k + "_" + variable + "_zonalstats.csv" 
+        oName = root + os.sep  + k + "_" + variable + "_zonalstats.csv" 
         ent_stats = zonal_stats(in_shp, ent_raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
         df = pd.DataFrame(ent_stats)
         df['substrate'] = a
@@ -543,7 +624,7 @@ if __name__ == '__main__':
         fnames.append(oName)
         
         variable = 'variance'
-        oName = r"C:\workspace\GLCM\slic_output" + os.sep  + k + "_" + variable + "_zonalstats.csv" 
+        oName = root + os.sep  + k + "_" + variable + "_zonalstats.csv" 
         var_stats = zonal_stats(in_shp, var_raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
         df = pd.DataFrame(var_stats)
         df['substrate'] = a      
@@ -551,7 +632,7 @@ if __name__ == '__main__':
         fnames.append(oName)
         
         variable = 'homogeneity'
-        oName = r"C:\workspace\GLCM\slic_output" + os.sep + k + "_" + variable + "_zonalstats.csv" 
+        oName = root + os.sep + k + "_" + variable + "_zonalstats.csv" 
         homo_stats = zonal_stats(in_shp, homo_raster, stats=['min','mean','max','median','std','count','percentile_25','percentile_50','percentile_75'])
         df = pd.DataFrame(homo_stats)
         df['substrate'] = a 
@@ -561,14 +642,14 @@ if __name__ == '__main__':
         del (k,v), (k1,v1), (k2,v2), (k3,v3), (k4,v4),ss_raster,ent_raster,var_raster,homo_raster,in_shp,a,df, oName, variable
     
     #merge zonal stats csv files
-    fnames = merge_zonal_stats(fnames)
+    fnames = merge_zonal_stats(fnames,root)
     
     try:
         fnames
     except:
-        fnames = [r"C:\workspace\GLCM\slic_output\entropy_zonal_stats_merged.csv",                 
-                  r"C:\workspace\GLCM\slic_output\variance_zonal_stats_merged.csv",
-                  r"C:\workspace\GLCM\slic_output\homogeneity_zonal_stats_merged.csv"]
+        fnames = [root + os.sep + "entropy_zonal_stats_merged.csv",                 
+                  root + os.sep + "variance_zonal_stats_merged.csv",
+                  root + os.sep + "homogeneity_zonal_stats_merged.csv"]
 
     
     #Begin of lsq classifications
@@ -620,7 +701,7 @@ if __name__ == '__main__':
         homo_data = lsq_read_raster(homo_raster)[0]
         df = pd.DataFrame({'ent':ent_data.flatten(),'var':var_data.flatten(),'homo':homo_data.flatten()})
     
-        outFile = r"C:\workspace\GLCM\slic_output\slic_lsq_rasters" + os.sep + k +"_median_Sed_Class_3_variable.tif"
+        outFile = root + os.sep + "slic_lsq_rasters" + os.sep + k +"_median_Sed_Class_3_variable.tif"
         fnames.append(outFile)
         #======================================================
         ## inputs

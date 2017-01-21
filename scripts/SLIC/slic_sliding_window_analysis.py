@@ -112,6 +112,7 @@ def glcm_calc(im,segments_slic):
     var = np.zeros(im.shape[:2], dtype = "float64")
     homo = np.zeros(im.shape[:2], dtype = "float64")
     win = 12
+    print 'Calculating GLCM properties for %s unique superpixels...' % (str(len(np.unique(segments_slic))),)
     for k in np.unique(segments_slic):
        mask = np.zeros(im.shape[:2], dtype = "uint8")
        mask[segments_slic == k] = 255
@@ -125,7 +126,7 @@ def glcm_calc(im,segments_slic):
            cmask, cim = crop_toseg(mask, im)
            Ny, Nx = np.shape(cim)
            #Set up sliding window
-           Z,ind = sliding_window(cim,(win,win),(2,2))
+           Z,ind = sliding_window(cim,(win,win),(6,6))
            
            w = Parallel(n_jobs = cpu_count()-1, verbose=0)(delayed(glcm_calc2)(Z[k], win) for k in xrange(len(Z)))
            
@@ -552,8 +553,9 @@ if __name__ == '__main__':
                      [int(1200),int(1200), int(350)],
                       [int(1300),int(1300), int(400)],
                        [int(1400),int(1400), int(450)]]
-    nn = 0
-    for i in iter_start:
+    nn = 1
+    for i in iter_start[1:]:
+        fnames=[]
         print i                    
         n = 0
         #Create GLCM rasters, aggregrate distributions
@@ -571,13 +573,13 @@ if __name__ == '__main__':
             im = rescale(im,0,1)
             
             #initialize segments for iteration
-            print 'Now calculating n segmentss for slic segments for %s...' %(k,)
+            print 'Now calculating n_segments for slic segments for %s...' %(k,)
             segs = int(i[n])
             segments_slic = slic(im, n_segments=segs, compactness=.1,slic_zero=True)
             
             
             im = read_raster(ss_raster)[0]
-            print 'Now calculating GLCM metrics for %s...' %(k,)
+            
             #Calculate GLCM metrics for slic segments
             ent,var,homo = glcm_calc(im,segments_slic)
             
