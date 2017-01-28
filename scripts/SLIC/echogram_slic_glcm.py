@@ -4,10 +4,12 @@ Created on Fri Jan 27 11:31:00 2017
 
 @author: dan
 """
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import os
-from skimage.segmentation import slic
+from skimage.segmentation import slic, mark_boundaries
 from scipy.io import loadmat
 import numpy as np
 from joblib import Parallel, delayed, cpu_count
@@ -21,6 +23,7 @@ import pyproj
 from osgeo import gdal,osr
 
 from skimage.feature import greycomatrix, greycoprops
+import time
 
 
 
@@ -73,9 +76,9 @@ def crop_toseg(mask, im):
     
             for delta_hght in xrange(hght[row][col]):
                 min_w = np.min([min_w, wid[row-delta_hght][col]])
-                areanow = (delta_hght+1)*min_w
+                areanow = (delta_hght+5)*min_w
                 if areanow > maxarea[0]:
-                    maxarea = (areanow, [(row-delta_hght, col-min_w+1, row, col)])
+                    maxarea = (areanow, [(row-delta_hght, col-min_w+5, row, col)])
     
     t = np.squeeze(maxarea[1])
     
@@ -120,7 +123,6 @@ def glcm_calc(im,segments_slic):
 
     
     #mask out no data portions of the input image   
-    ent[ent>15]= np.nan
     ent[np.isnan(m)] = np.nan  
     var[np.isnan(m)] = np.nan  
     homo[np.isnan(m)] = np.nan  
@@ -258,6 +260,11 @@ if __name__ == '__main__':
 
     base = humfile.split('.DAT') # get base of file name for output
     base = base[0].split(os.sep)[-1]
+     # start timer
+    if os.name=='posix': # true if linux/mac or cygwin on windows
+       start = time.time()
+    else: # windows
+       start = time.clock()
 
     # remove underscores, negatives and spaces from basename
     base = humutils.strip_base(base)    
@@ -305,12 +312,20 @@ if __name__ == '__main__':
     print 'Calculating SLIC super pixels...'
     
     #get SLIC superpixels
-    segments_slic = slic(im, n_segments=int(im.shape[0]/10), compactness=.1)
+    segments_slic = slic(im, n_segments=int(im.shape[0]/5), compactness=.1)
     
     # get number pixels in scan line
     extent = int(np.shape(im)[0]/2)
     del im
-
+    #Reload image for GLCM calculations 
+    im = np.vstack((np.flipud(np.hstack(port_fp)), np.hstack(star_fp)))
+    im[np.isnan(im)] = 0
+    del port_fp, star_fp
+    
+    fig, ax = plt.subplots()
+    ax.imshow(mark_boundaries(im, segments_slic))
+    plt.savefig(os.path.normpath(os.path.join(sonpath,'slic_segmentaion.png')),dpi=600)
+    plt.close()
     print "Fount %s unique segments" % str(len(np.unique(segments_slic)))
     
     
@@ -391,10 +406,7 @@ if __name__ == '__main__':
     CreateRaster(np.flipud(datm), gt, proj,c,r,driverName,oFile)
  # ##################################################################################
  
-    #Reload image for GLCM calculations 
-    im = np.vstack((np.flipud(np.hstack(port_fp)), np.hstack(star_fp)))
-    im[np.isnan(im)] = 0
-    del port_fp, star_fp
+
     print 'Now calculating GLCM metrics for Echogram...'
     #Calculate GLCM metrics for echogram
     ent,var,homo = glcm_calc(im,segments_slic)
@@ -414,13 +426,19 @@ if __name__ == '__main__':
     dat[np.isinf(dat)] = np.nan
  
     datm = np.ma.masked_invalid(dat)
+    mask = datm.mask==True
+    fOut = os.path.normpath(os.path.join(sonpath,'x_y_entropy_25cm.asc'))
+    print 'Writing point cloud to file...'
+    with open(fOut, 'wb')as f:
+        np.savetxt(f, np.hstack((humutils.ascol(grid_x[mask==False].flatten()),humutils.ascol(grid_y[mask==False].flatten()),humutils.ascol(datm[mask==False].flatten()))),delimiter=' ', fmt="%8.6f %8.6f %1.6f")   
+    f.close()
     
     oFile = os.path.normpath(os.path.join(sonpath + base +'slic_ent.tif'))
-    print 'Now Making SLIC superpixel raster...'
+    print 'Now Making entropy superpixel raster...'
     CreateRaster(np.flipud(datm), gt, proj,c,r,driverName,oFile)
     
     print 'Now resampling variance...'
-    merge = ent.flatten()[np.where(np.logical_not(np.isnan(Y)))]
+    merge = var.flatten()[np.where(np.logical_not(np.isnan(Y)))]
     merge = merge.flatten()[np.where(np.logical_not(np.isnan(X)))]
     merge = merge[np.where(np.logical_not(np.isnan(merge)))]
     dat, res = get_grid(mode, orig_def, targ_def, merge, res*10, np.min(X), np.max(X), np.min(Y), np.max(Y), res, 64, sigmas, eps, shape, 4, trans, humlon, humlat)
@@ -429,13 +447,17 @@ if __name__ == '__main__':
     dat[np.isinf(dat)] = np.nan
  
     datm = np.ma.masked_invalid(dat)
-    
+    fOut = os.path.normpath(os.path.join(sonpath,'x_y_variance25cm.asc'))
+    print 'Writing point cloud to file...'
+    with open(fOut, 'wb')as f:
+        np.savetxt(f, np.hstack((humutils.ascol(grid_x[mask==False].flatten()),humutils.ascol(grid_y[mask==False].flatten()),humutils.ascol(datm[mask==False].flatten()))),delimiter=' ', fmt="%8.6f %8.6f %1.6f")   
+    f.close()
     oFile = os.path.normpath(os.path.join(sonpath + base +'slic_var.tif'))
-    print 'Now Making SLIC superpixel raster...'
+    print 'Now Making variance superpixel raster...'
     CreateRaster(np.flipud(datm), gt, proj,c,r,driverName,oFile)
     
     print 'Now resampling homogeneity...'
-    merge = ent.flatten()[np.where(np.logical_not(np.isnan(Y)))]
+    merge = homo.flatten()[np.where(np.logical_not(np.isnan(Y)))]
     merge = merge.flatten()[np.where(np.logical_not(np.isnan(X)))]
     merge = merge[np.where(np.logical_not(np.isnan(merge)))]
     dat, res = get_grid(mode, orig_def, targ_def, merge, res*10, np.min(X), np.max(X), np.min(Y), np.max(Y), res, 64, sigmas, eps, shape, 4, trans, humlon, humlat)
@@ -445,8 +467,20 @@ if __name__ == '__main__':
  
     datm = np.ma.masked_invalid(dat)
     
+    print 'Writing point cloud to file...'
+    fOut = os.path.normpath(os.path.join(sonpath,'x_y_homo25cm.asc'))
+    with open(fOut, 'wb')as f:
+        np.savetxt(f, np.hstack((humutils.ascol(grid_x[mask==False].flatten()),humutils.ascol(grid_y[mask==False].flatten()),humutils.ascol(datm[mask==False].flatten()))),delimiter=' ', fmt="%8.6f %8.6f %1.6f")   
+    f.close()    
+    
     oFile = os.path.normpath(os.path.join(sonpath + base +'slic_homo.tif'))
-    print 'Now Making SLIC superpixel raster...'
+    print 'Now Making homo superpixel raster...'
     CreateRaster(np.flipud(datm), gt, proj,c,r,driverName,oFile)
- 
+    if os.name=='posix': # true if linux/mac
+       elapsed = (time.time() - start)
+    else: # windows
+       elapsed = (time.clock() - start)
+    print "Processing took ", elapsed , "seconds to analyse"
+
+    print "Done!"
  
