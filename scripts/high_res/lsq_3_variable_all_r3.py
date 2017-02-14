@@ -181,7 +181,7 @@ def CreateRaster(sed_class,gt,outFile):
 if __name__ == '__main__':
     
     #input rasters
-    ent_dict = {'R02017':r"C:\workspace\GLCM\output\new_glcm_rasters\2015_04\R02017_var_resampled.tif"}      
+    ent_dict = {'R02017':r"C:\workspace\GLCM\output\new_glcm_rasters\2015_04\R02017_entropy_resampled.tif"}      
                 
     var_dict = {'R02017':r"C:\workspace\GLCM\output\new_glcm_rasters\2015_04\R02017_var_resampled.tif"  }   
     
@@ -248,7 +248,7 @@ if __name__ == '__main__':
         outFile = r"C:\workspace\GLCM\output\least_sqares_classification" + os.sep + k +"_median_Sed_Class_3_variable.tif"
         #======================================================
         ## inputs
-        w = [0.1,0.7,0.2] #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
+        w = [0.1,0.7,0.2]  #weightings - leave at 1 unless you have any preference for 1 input variable over another. 
         
         calib = np.asarray(calib_df.values,dtype='float')
         vec1 = ent_data.flatten()#flattened array of homogeneity values from a given sample (sidescan)
