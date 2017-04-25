@@ -346,4 +346,8 @@ if __name__ == '__main__':
     writer.value_matrix = class_df.values.tolist()
     writer.write_table()   
         
+    
+    df = pd.pivot_table(merge_df,values=['Sand','Gravel','Boulders'],index=['substrate'],aggfunc=np.sum)
 
+    df = pd.read_csv(r"C:\workspace\GLCM\new_output\LSQ_Results\pred_true_lsq.csv",sep=',',names=['pred','true'],header=None)
+    print(classification_report(df['pred'].ravel(),df['true'].ravel()))
