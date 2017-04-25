@@ -10,6 +10,7 @@ from scikits.bootstrap import bootstrap as boot
 from rasterstats import zonal_stats
 import pytablewriter
 import itertools
+from sklearn.metrics import cohen_kappa_score, classification_report
 
 # =========================================================
 def get_subs(shp):
@@ -351,3 +352,4 @@ if __name__ == '__main__':
 
     df = pd.read_csv(r"C:\workspace\GLCM\new_output\LSQ_Results\pred_true_lsq.csv",sep=',',names=['pred','true'],header=None)
     print(classification_report(df['pred'].ravel(),df['true'].ravel()))
+    print (cohen_kappa_score(df['pred'].ravel(),df['true'].ravel()))
