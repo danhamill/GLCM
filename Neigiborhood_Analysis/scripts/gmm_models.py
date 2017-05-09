@@ -203,7 +203,7 @@ for covtype in ['tied']:
 #      plt.savefig(r'C:\workspace\Research\hamill_thesis\chapter2\figures\Entropy_Model_2_Part.pdf',dpi=600)
       
       # Now lets make some maps...
-      ent_dict = {'R01346':r"C:\workspace\GLCM\Neigiborhood_Analysis\GLCM_Rasters\R02028_3_entropy_Resampled.tif"}      
+      ent_dict = {'R2028':r"C:\workspace\GLCM\Neigiborhood_Analysis\GLCM_Rasters\R02028_3_entropy_Resampled.tif"}      
       rasters = []
       for (key,v), in zip(ent_dict.items()):         
           ent_raster =v
